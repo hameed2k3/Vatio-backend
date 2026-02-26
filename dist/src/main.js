@@ -1,0 +1,25 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const core_1 = require("@nestjs/core");
+const app_module_1 = require("./app.module");
+const microservices_1 = require("@nestjs/microservices");
+const nestjs_pino_1 = require("nestjs-pino");
+async function bootstrap() {
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, { bufferLogs: true });
+    app.useLogger(app.get(nestjs_pino_1.Logger));
+    const mqttHost = process.env.MQTT_HOST || 'localhost';
+    const mqttPort = process.env.MQTT_PORT || 1883;
+    app.connectMicroservice({
+        transport: microservices_1.Transport.MQTT,
+        options: {
+            url: `mqtt://${mqttHost}:${mqttPort}`,
+            clientId: process.env.MQTT_CLIENT_ID || 'vatio_backend_service',
+        },
+    });
+    await app.startAllMicroservices();
+    await app.listen(process.env.PORT || 3000);
+    console.log(`VATIO Backend is running on: ${await app.getUrl()}`);
+    console.log(`MQTT Ingestion connected to: mqtt://${mqttHost}:${mqttPort}`);
+}
+bootstrap();
+//# sourceMappingURL=main.js.map
