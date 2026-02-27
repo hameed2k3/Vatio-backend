@@ -48,9 +48,7 @@ __decorate([
 ], RealtimeGateway.prototype, "handleUnsubscribe", null);
 exports.RealtimeGateway = RealtimeGateway = RealtimeGateway_1 = __decorate([
     (0, websockets_1.WebSocketGateway)({
-        cors: {
-            origin: '*',
-        },
+        cors: true,
     })
 ], RealtimeGateway);
 //# sourceMappingURL=realtime.gateway.js.map

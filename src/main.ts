@@ -1,11 +1,12 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
-  app.useLogger(app.get(Logger));
+  const app = await NestFactory.create(AppModule);
+  app.enableCors(); // Enable CORS for everything in dev
 
   const mqttHost = process.env.MQTT_HOST || 'localhost';
   const mqttPort = process.env.MQTT_PORT || 1883;
@@ -20,7 +21,7 @@ async function bootstrap() {
   });
 
   await app.startAllMicroservices();
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.PORT || 3000, '0.0.0.0');
 
   console.log(`VATIO Backend is running on: ${await app.getUrl()}`);
   console.log(`MQTT Ingestion connected to: mqtt://${mqttHost}:${mqttPort}`);

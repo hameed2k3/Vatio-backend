@@ -31,6 +31,7 @@
     "@prisma/client": "^7.4.1",
     "@prisma/config": "^7.4.1",
     "@types/pg": "^8.16.0",
+    "axios": "^1.13.5",
     "ioredis": "^5.9.3",
     "mqtt": "^5.15.0",
     "nestjs-pino": "^4.6.0",

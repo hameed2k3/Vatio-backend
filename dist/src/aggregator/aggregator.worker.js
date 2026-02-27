@@ -64,10 +64,21 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                     for (const [_, messages] of results) {
                         for (const [id, fields] of messages) {
                             const dataIndex = fields.indexOf('data');
-                            if (dataIndex !== -1) {
+                            const topicIndex = fields.indexOf('topic');
+                            if (dataIndex !== -1 && topicIndex !== -1) {
                                 const payload = fields[dataIndex + 1];
-                                const data = JSON.parse(payload);
-                                this.bufferData(data);
+                                const topic = fields[topicIndex + 1];
+                                const deviceId = topic.split('/').pop();
+                                try {
+                                    const data = this.parseHardwareString(payload);
+                                    if (data) {
+                                        data.deviceId = deviceId;
+                                        this.bufferData(data);
+                                    }
+                                }
+                                catch (e) {
+                                    this.logger.warn(`Failed to parse hardware payload: ${payload}`);
+                                }
                             }
                             await this.redisService.getClient().xack(this.streamName, this.groupName, id);
                         }
@@ -79,6 +90,26 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
+    }
+    parseHardwareString(payload) {
+        const clean = payload.replace('[', '').replace(']', '');
+        const pairs = clean.split(',');
+        const dataMap = {};
+        pairs.forEach(pair => {
+            const [index, value] = pair.split(':').map(s => s.trim());
+            if (index && value) {
+                dataMap[index] = parseFloat(value);
+            }
+        });
+        return {
+            deviceId: 'unknown',
+            energy: dataMap['0'] || 0,
+            voltage: dataMap['10'] || 0,
+            current: dataMap['26'] || 0,
+            power: dataMap['51'] || 0,
+            frequency: dataMap['44'] || 0,
+            temp: 0,
+        };
     }
     bufferData(data) {
         const deviceId = data.deviceId;
@@ -104,6 +135,7 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             try {
                 const aggregated = this.aggregateRecords(deviceId, records);
                 await this.persistToDb(aggregated);
+                await this.redisService.setStatus(deviceId, 'online', 15);
                 this.realtimeGateway.sendUpdate(deviceId, aggregated);
             }
             catch (e) {
@@ -119,7 +151,8 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             power: acc.power + (r.power || 0),
             energy: Math.max(acc.energy, r.energy || 0),
             temp: acc.temp + (r.temp || 0),
-        }), { voltage: 0, current: 0, power: 0, energy: 0, temp: 0 });
+            frequency: acc.frequency + (r.frequency || 0),
+        }), { voltage: 0, current: 0, power: 0, energy: 0, temp: 0, frequency: 0 });
         return {
             deviceId,
             timestamp: new Date(),
@@ -128,6 +161,7 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             power: sum.power / count,
             energy: sum.energy,
             temp: sum.temp / count,
+            frequency: sum.frequency / count,
         };
     }
     async persistToDb(data) {

@@ -33,9 +33,19 @@ let RedisService = class RedisService {
     onModuleDestroy() {
         this.client.disconnect();
     }
-    async addToStream(data) {
+    async addToStream(data, topic) {
         const payload = JSON.stringify(data);
-        await this.client.xadd(this.streamName, 'MAXLEN', '~', 100000, '*', 'data', payload);
+        const args = [this.streamName, 'MAXLEN', '~', 100000, '*', 'data', payload];
+        if (topic) {
+            args.push('topic', topic);
+        }
+        await this.client.xadd(...args);
+    }
+    async setStatus(deviceId, status, ttl = 30) {
+        await this.client.set(`vatio:device:${deviceId}:status`, status, 'EX', ttl);
+    }
+    async getStatus(deviceId) {
+        return (await this.client.get(`vatio:device:${deviceId}:status`)) || 'offline';
     }
     getClient() {
         return this.client;

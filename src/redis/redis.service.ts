@@ -22,9 +22,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         this.client.disconnect();
     }
 
-    async addToStream(data: any) {
+    async addToStream(data: any, topic?: string) {
         const payload = JSON.stringify(data);
-        await this.client.xadd(this.streamName, 'MAXLEN', '~', 100000, '*', 'data', payload);
+        const args: (string | number)[] = [this.streamName, 'MAXLEN', '~', 100000, '*', 'data', payload];
+        if (topic) {
+            args.push('topic', topic);
+        }
+        await (this.client.xadd as any)(...args);
+    }
+
+    async setStatus(deviceId: string, status: string, ttl: number = 30) {
+        await this.client.set(`vatio:device:${deviceId}:status`, status, 'EX', ttl);
+    }
+
+    async getStatus(deviceId: string): Promise<string> {
+        return (await this.client.get(`vatio:device:${deviceId}:status`)) || 'offline';
     }
 
     getClient(): Redis {

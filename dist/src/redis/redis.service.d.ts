@@ -8,6 +8,8 @@ export declare class RedisService implements OnModuleInit, OnModuleDestroy {
     constructor(configService: ConfigService);
     onModuleInit(): void;
     onModuleDestroy(): void;
-    addToStream(data: any): Promise<void>;
+    addToStream(data: any, topic?: string): Promise<void>;
+    setStatus(deviceId: string, status: string, ttl?: number): Promise<void>;
+    getStatus(deviceId: string): Promise<string>;
     getClient(): Redis;
 }

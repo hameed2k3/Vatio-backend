@@ -16,25 +16,93 @@ exports.IngestionController = void 0;
 const common_1 = require("@nestjs/common");
 const microservices_1 = require("@nestjs/microservices");
 const redis_service_1 = require("../redis/redis.service");
+const prisma_service_1 = require("../prisma/prisma.service");
 let IngestionController = class IngestionController {
     redisService;
-    constructor(redisService) {
+    prismaService;
+    constructor(redisService, prismaService) {
         this.redisService = redisService;
+        this.prismaService = prismaService;
     }
-    async handleTelemetry(data) {
-        await this.redisService.addToStream(data);
+    async handleTelemetry(data, context) {
+        const topic = context.getTopic();
+        await this.redisService.addToStream(data, topic);
+    }
+    async getDevices() {
+        const devices = await this.prismaService.device.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        return Promise.all(devices.map(async (d) => ({
+            ...d,
+            status: await this.redisService.getStatus(d.id)
+        })));
+    }
+    async addDevice(data) {
+        return this.prismaService.device.create({
+            data: {
+                id: data.id || `dev_${Math.floor(Math.random() * 10000)}`,
+                name: data.name,
+                type: data.type,
+                location: data.location,
+            }
+        });
+    }
+    async updateDevice(id, data) {
+        return this.prismaService.device.update({
+            where: { id },
+            data: {
+                name: data.name,
+                type: data.type,
+                location: data.location,
+            }
+        });
+    }
+    async deleteDevice(id) {
+        return this.prismaService.device.delete({
+            where: { id }
+        });
     }
 };
 exports.IngestionController = IngestionController;
 __decorate([
     (0, microservices_1.MessagePattern)('vatio/telemetry/#'),
     __param(0, (0, microservices_1.Payload)()),
+    __param(1, (0, microservices_1.Ctx)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, microservices_1.MqttContext]),
+    __metadata("design:returntype", Promise)
+], IngestionController.prototype, "handleTelemetry", null);
+__decorate([
+    (0, common_1.Get)('devices'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], IngestionController.prototype, "getDevices", null);
+__decorate([
+    (0, common_1.Post)('devices'),
+    __param(0, (0, microservices_1.Payload)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
-], IngestionController.prototype, "handleTelemetry", null);
+], IngestionController.prototype, "addDevice", null);
+__decorate([
+    (0, common_1.Put)('devices/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], IngestionController.prototype, "updateDevice", null);
+__decorate([
+    (0, common_1.Delete)('devices/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], IngestionController.prototype, "deleteDevice", null);
 exports.IngestionController = IngestionController = __decorate([
-    (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [redis_service_1.RedisService])
+    (0, common_1.Controller)('ingestion'),
+    __metadata("design:paramtypes", [redis_service_1.RedisService,
+        prisma_service_1.PrismaService])
 ], IngestionController);
 //# sourceMappingURL=ingestion.controller.js.map

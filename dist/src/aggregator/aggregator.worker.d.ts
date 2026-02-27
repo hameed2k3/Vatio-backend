@@ -20,6 +20,7 @@ export declare class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     onModuleDestroy(): void;
     private setupConsumerGroup;
     private startConsumerLoop;
+    private parseHardwareString;
     private bufferData;
     private startAggregationFlush;
     private flush;

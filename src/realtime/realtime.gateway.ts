@@ -3,9 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
-    cors: {
-        origin: '*',
-    },
+    cors: true,
 })
 export class RealtimeGateway {
     @WebSocketServer()

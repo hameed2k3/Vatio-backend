@@ -23,7 +23,7 @@ model Device {
 }
 
 model Telemetry {
-  id        BigInt   @id @default(autoincrement())
+  id        BigInt   @default(autoincrement())
   device    Device   @relation(fields: [deviceId], references: [id])
   deviceId  String
   timestamp DateTime @default(now())
@@ -39,5 +39,6 @@ model Telemetry {
   temp      Float?   // Celsius
   status    Int?     // Status code
   
+  @@id([id, timestamp])
   @@index([deviceId, timestamp(sort: Desc)])
 }

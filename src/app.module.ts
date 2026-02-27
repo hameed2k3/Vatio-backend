@@ -6,6 +6,8 @@ import { RedisModule } from './redis/redis.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { AggregatorModule } from './aggregator/aggregator.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     RealtimeModule,
     IngestionModule,
     AggregatorModule,
+    TelemetryModule,
+    AuthModule,
   ],
 })
 export class AppModule { }

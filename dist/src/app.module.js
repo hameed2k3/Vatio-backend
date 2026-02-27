@@ -15,6 +15,8 @@ const redis_module_1 = require("./redis/redis.module");
 const ingestion_module_1 = require("./ingestion/ingestion.module");
 const aggregator_module_1 = require("./aggregator/aggregator.module");
 const realtime_module_1 = require("./realtime/realtime.module");
+const telemetry_module_1 = require("./telemetry/telemetry.module");
+const auth_module_1 = require("./auth/auth.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -32,6 +34,8 @@ exports.AppModule = AppModule = __decorate([
             realtime_module_1.RealtimeModule,
             ingestion_module_1.IngestionModule,
             aggregator_module_1.AggregatorModule,
+            telemetry_module_1.TelemetryModule,
+            auth_module_1.AuthModule,
         ],
     })
 ], AppModule);
