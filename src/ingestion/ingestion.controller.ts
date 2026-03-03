@@ -10,6 +10,16 @@ export class IngestionController {
         private readonly prismaService: PrismaService,
     ) { }
 
+    @MessagePattern('Meter_Reading')
+    async handleWifiTelemetry(@Payload() data: any, @Ctx() context: MqttContext) {
+        await this.redisService.addToStream(data, context.getTopic());
+    }
+
+    @MessagePattern('test/Meter_Reading')
+    async handle4GTelemetry(@Payload() data: any, @Ctx() context: MqttContext) {
+        await this.redisService.addToStream(data, context.getTopic());
+    }
+
     @MessagePattern('vatio/telemetry/#')
     async handleTelemetry(@Payload() data: any, @Ctx() context: MqttContext) {
         // Pipe directly to Redis Stream for sub-millisecond ingestion

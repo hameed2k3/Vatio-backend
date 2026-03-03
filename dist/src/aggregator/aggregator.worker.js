@@ -72,6 +72,10 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                                 try {
                                     const data = this.parseHardwareString(payload);
                                     if (data) {
+                                        let deviceId = topic.split('/').pop();
+                                        if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
+                                            deviceId = 'NEWDEV_01';
+                                        }
                                         data.deviceId = deviceId;
                                         this.bufferData(data);
                                     }
@@ -92,20 +96,33 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
         }
     }
     parseHardwareString(payload) {
-        const clean = payload.replace('[', '').replace(']', '');
-        const pairs = clean.split(',');
+        this.logger.debug(`Raw Hardware Payload: ${payload}`);
         const dataMap = {};
-        pairs.forEach(pair => {
-            const [index, value] = pair.split(':').map(s => s.trim());
-            if (index && value) {
-                dataMap[index] = parseFloat(value);
+        try {
+            let clean = payload.trim();
+            if (clean.startsWith('"') && clean.endsWith('"')) {
+                clean = clean.substring(1, clean.length - 1);
             }
-        });
+            clean = clean.replace(/^\[/, '').replace(/\]$/, '').trim();
+            const kvs = clean.split(',').map(kv => kv.trim());
+            kvs.forEach(kv => {
+                const parts = kv.split(':').map(p => p.trim());
+                if (parts.length === 2) {
+                    const [key, val] = parts;
+                    dataMap[key] = parseFloat(val);
+                }
+            });
+        }
+        catch (err) {
+            this.logger.error(`Error splitting payload: ${err.message}`);
+        }
+        const energy = dataMap['0'];
+        this.logger.debug(`Energy at index 0: ${energy}`);
         return {
             deviceId: 'unknown',
-            energy: dataMap['0'] || 0,
-            voltage: dataMap['10'] || 0,
-            current: dataMap['26'] || 0,
+            energy: isNaN(energy) ? 0 : energy,
+            voltage: dataMap['16'] || dataMap['10'] || 0,
+            current: dataMap['32'] || dataMap['26'] || 0,
             power: dataMap['51'] || 0,
             frequency: dataMap['44'] || 0,
             temp: 0,
@@ -122,7 +139,7 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
         buffer.push(data);
     }
     startAggregationFlush() {
-        const interval = this.configService.get('AGGREGATION_WINDOW_MS', 5000);
+        const interval = this.configService.get('AGGREGATION_WINDOW_MS', 1000);
         this.flushInterval = setInterval(() => this.flush(), interval);
     }
     async flush() {
@@ -134,8 +151,10 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
         for (const [deviceId, records] of snapshot) {
             try {
                 const aggregated = this.aggregateRecords(deviceId, records);
+                this.logger.log(`Device ${deviceId} Aggregated: ${JSON.stringify(aggregated)}`);
                 await this.persistToDb(aggregated);
                 await this.redisService.setStatus(deviceId, 'online', 15);
+                await this.redisService.getClient().set(`vatio:latest:${deviceId}`, JSON.stringify(aggregated), 'EX', 60);
                 this.realtimeGateway.sendUpdate(deviceId, aggregated);
             }
             catch (e) {

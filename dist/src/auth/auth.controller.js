@@ -17,7 +17,9 @@ const common_1 = require("@nestjs/common");
 let AuthController = class AuthController {
     async login(body) {
         const { email, password } = body;
-        if (email === 'admin@vatio.io' && password === 'password') {
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@vatio.io';
+        const adminPass = process.env.ADMIN_PASSWORD || 'password';
+        if (email === adminEmail && password === adminPass) {
             return {
                 user: { id: 'U001', name: 'Admin', email },
                 token: 'real-backend-jwt-token'

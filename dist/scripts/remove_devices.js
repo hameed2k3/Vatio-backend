@@ -43,25 +43,30 @@ const pool = new pg_1.Pool({ connectionString: url });
 const adapter = new adapter_pg_1.PrismaPg(pool);
 const prisma = new client_1.PrismaClient({ adapter });
 async function main() {
-    console.log('Seeding initial devices...');
-    const devices = [
-        { id: 'vatio_device_001', name: 'Device-1', type: 'AC', location: 'Hall' },
-    ];
-    for (const device of devices) {
-        await prisma.device.upsert({
-            where: { id: device.id },
-            update: device,
-            create: device,
+    console.log('--- FINAL CLEANUP: Removing Devices 2 & 3 ---');
+    const deviceIdsToRemove = ['vatio_device_002', 'vatio_device_003'];
+    try {
+        const teleDeleted = await prisma.telemetry.deleteMany({
+            where: {
+                deviceId: { in: deviceIdsToRemove }
+            }
         });
-        console.log(`Upserted device: ${device.id}`);
+        console.log(`Deleted ${teleDeleted.count} telemetry records.`);
+        const devDeleted = await prisma.device.deleteMany({
+            where: {
+                id: { in: deviceIdsToRemove }
+            }
+        });
+        console.log(`Deleted ${devDeleted.count} device records.`);
+        console.log('Cleanup successful.');
+    }
+    catch (error) {
+        console.error('Error during cleanup:', error);
+    }
+    finally {
+        await prisma.$disconnect();
+        await pool.end();
     }
 }
-main()
-    .catch(e => {
-    console.error(e);
-    process.exit(1);
-})
-    .finally(async () => {
-    await prisma.$disconnect();
-});
-//# sourceMappingURL=seed_devices.js.map
+main();
+//# sourceMappingURL=remove_devices.js.map

@@ -24,6 +24,12 @@ let IngestionController = class IngestionController {
         this.redisService = redisService;
         this.prismaService = prismaService;
     }
+    async handleWifiTelemetry(data, context) {
+        await this.redisService.addToStream(data, context.getTopic());
+    }
+    async handle4GTelemetry(data, context) {
+        await this.redisService.addToStream(data, context.getTopic());
+    }
     async handleTelemetry(data, context) {
         const topic = context.getTopic();
         await this.redisService.addToStream(data, topic);
@@ -64,6 +70,22 @@ let IngestionController = class IngestionController {
     }
 };
 exports.IngestionController = IngestionController;
+__decorate([
+    (0, microservices_1.MessagePattern)('Meter_Reading'),
+    __param(0, (0, microservices_1.Payload)()),
+    __param(1, (0, microservices_1.Ctx)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, microservices_1.MqttContext]),
+    __metadata("design:returntype", Promise)
+], IngestionController.prototype, "handleWifiTelemetry", null);
+__decorate([
+    (0, microservices_1.MessagePattern)('test/Meter_Reading'),
+    __param(0, (0, microservices_1.Payload)()),
+    __param(1, (0, microservices_1.Ctx)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, microservices_1.MqttContext]),
+    __metadata("design:returntype", Promise)
+], IngestionController.prototype, "handle4GTelemetry", null);
 __decorate([
     (0, microservices_1.MessagePattern)('vatio/telemetry/#'),
     __param(0, (0, microservices_1.Payload)()),

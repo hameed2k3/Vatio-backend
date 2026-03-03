@@ -16,14 +16,24 @@ export class TelemetryController {
         const start = startTime ? new Date(startTime) : undefined;
         const end = endTime ? new Date(endTime) : undefined;
 
-        const records = await this.telemetryService.getHistory(deviceId, limit, start, end);
+        let records: any[];
 
-        // Map to frontend expected format if needed, or return raw
+        // If a wide range is requested without a specific small point limit, use aggregation
+        if (start && end && (!points || parseInt(points) > 1000)) {
+            records = await this.telemetryService.getAggregatedHistory(deviceId, start, end);
+            console.log(`Aggregated History for ${deviceId}: ${records.length} buckets found`);
+        } else {
+            records = await this.telemetryService.getHistory(deviceId, limit, start, end);
+            console.log(`Raw History for ${deviceId}: ${records.length} records found`);
+        }
+
+        if (records.length > 0) console.log(`First record energy: ${records[0].energy}`);
+
         return records.map(r => ({
-            ts: r.timestamp.getTime(),
+            ts: new Date(r.timestamp).getTime(),
             power: r.power,
             voltage: r.voltage,
-            phase1Voltage: r.voltage, // Simulation simplification
+            phase1Voltage: r.voltage,
             phase2Voltage: r.voltage ? r.voltage * 1.01 : null,
             phase3Voltage: r.voltage ? r.voltage * 0.99 : null,
             totalVoltage: r.voltage,
@@ -38,7 +48,53 @@ export class TelemetryController {
             phase3PF: 0.97,
             thd: 1.5,
             energyKwh: r.energy,
-            deviceId: r.deviceId,
-        })).reverse(); // Return in chronological order for charts
+            deviceId: r.deviceId || deviceId,
+        })).reverse();
+    }
+
+    @Get(':deviceId/latest')
+    async getLatest(@Param('deviceId') deviceId: string) {
+        // Try to get from Redis "Hot Cache" first
+        const cached = await this.telemetryService.getLatestFromRedis(deviceId);
+        if (cached) {
+            return {
+                ...cached,
+                ts: new Date(cached.timestamp).getTime(),
+                phase1Voltage: cached.voltage,
+                phase2Voltage: cached.voltage ? cached.voltage * 1.01 : null,
+                phase3Voltage: cached.voltage ? cached.voltage * 0.99 : null,
+                totalVoltage: cached.voltage,
+                phase1Current: cached.current,
+                phase2Current: cached.current ? cached.current * 0.95 : null,
+                phase3Current: cached.current ? cached.current * 0.05 : null,
+                powerFactor: 0.98,
+                phase1PF: 0.98,
+                energyKwh: cached.energy,
+                deviceId: cached.deviceId || deviceId,
+            };
+        }
+
+        // Fallback to database
+        const latest = await this.telemetryService.getLatest(deviceId);
+        if (!latest) return null;
+
+        return {
+            ts: new Date(latest.timestamp).getTime(),
+            power: latest.power,
+            voltage: latest.voltage,
+            phase1Voltage: latest.voltage,
+            phase2Voltage: latest.voltage ? latest.voltage * 1.01 : null,
+            phase3Voltage: latest.voltage ? latest.voltage * 0.99 : null,
+            totalVoltage: latest.voltage,
+            phase1Current: latest.current,
+            phase2Current: latest.current ? latest.current * 0.95 : null,
+            phase3Current: latest.current ? latest.current * 0.05 : null,
+            current: latest.current,
+            frequency: latest.frequency || 50,
+            powerFactor: 0.98,
+            phase1PF: 0.98,
+            energyKwh: latest.energy,
+            deviceId: latest.deviceId || deviceId,
+        };
     }
 }

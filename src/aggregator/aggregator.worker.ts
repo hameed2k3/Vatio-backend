@@ -69,6 +69,14 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
                                 try {
                                     const data = this.parseHardwareString(payload);
                                     if (data) {
+                                        // Handle hardware topics: 'Meter_Reading' or 'test/Meter_Reading'
+                                        // If it doesn't contain a device ID in the topic, we assign it a default 'hw_01' 
+                                        // or look for it in the payload if you add it there later.
+                                        let deviceId = topic.split('/').pop();
+                                        if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
+                                            deviceId = 'NEWDEV_01'; // Default ID from your .ino script
+                                        }
+
                                         data.deviceId = deviceId;
                                         this.bufferData(data);
                                     }
@@ -88,28 +96,42 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     private parseHardwareString(payload: string): any {
-        // Format: [0 : val, 1 : val, ...]
-        // Removing brackets
-        const clean = payload.replace('[', '').replace(']', '');
-        const pairs = clean.split(',');
+        // Format: "[0 : 1514.0759, 1 : 0.00, ...]" or [0 : 1514.0759, ...]
+        this.logger.debug(`Raw Hardware Payload: ${payload}`);
+
         const dataMap: any = {};
-
-        pairs.forEach(pair => {
-            const [index, value] = pair.split(':').map(s => s.trim());
-            if (index && value) {
-                dataMap[index] = parseFloat(value);
+        try {
+            // Remove surrounding quotes if present, then brackets
+            let clean = payload.trim();
+            if (clean.startsWith('"') && clean.endsWith('"')) {
+                clean = clean.substring(1, clean.length - 1);
             }
-        });
+            clean = clean.replace(/^\[/, '').replace(/\]$/, '').trim();
 
-        // Map indices to object properties based on Vatio_WiFi_4G.ino
+            const kvs = clean.split(',').map(kv => kv.trim());
+
+            kvs.forEach(kv => {
+                const parts = kv.split(':').map(p => p.trim());
+                if (parts.length === 2) {
+                    const [key, val] = parts;
+                    dataMap[key] = parseFloat(val);
+                }
+            });
+        } catch (err) {
+            this.logger.error(`Error splitting payload: ${err.message}`);
+        }
+
+        const energy = dataMap['0'];
+        this.logger.debug(`Energy at index 0: ${energy}`);
+
         return {
-            deviceId: 'unknown', // Will be overridden if we have it in topic
-            energy: dataMap['0'] || 0, // Import_kWh
-            voltage: dataMap['10'] || 0, // V_L1
-            current: dataMap['26'] || 0, // I_L1
-            power: dataMap['51'] || 0, // Total_kW
+            deviceId: 'unknown',
+            energy: isNaN(energy) ? 0 : energy,
+            voltage: dataMap['16'] || dataMap['10'] || 0,
+            current: dataMap['32'] || dataMap['26'] || 0,
+            power: dataMap['51'] || 0,
             frequency: dataMap['44'] || 0,
-            temp: 0, // Add logic if available
+            temp: 0,
         };
     }
 
@@ -125,7 +147,7 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     private startAggregationFlush() {
-        const interval = this.configService.get<number>('AGGREGATION_WINDOW_MS', 5000);
+        const interval = this.configService.get<number>('AGGREGATION_WINDOW_MS', 1000);
         this.flushInterval = setInterval(() => this.flush(), interval);
     }
 
@@ -140,10 +162,18 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
         for (const [deviceId, records] of snapshot) {
             try {
                 const aggregated = this.aggregateRecords(deviceId, records);
+                this.logger.log(`Device ${deviceId} Aggregated: ${JSON.stringify(aggregated)}`);
                 await this.persistToDb(aggregated); // Re-enabled persistence
 
                 // Track online status in Redis with 15s TTL (aggregated every 5s)
                 await this.redisService.setStatus(deviceId, 'online', 15);
+
+                // Cache the absolute latest record for instant refresh/load (60s TTL)
+                await this.redisService.getClient().set(
+                    `vatio:latest:${deviceId}`,
+                    JSON.stringify(aggregated),
+                    'EX', 60
+                );
 
                 // Push real-time update throttled by the 5s window
                 this.realtimeGateway.sendUpdate(deviceId, aggregated);

@@ -12,13 +12,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TelemetryService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const redis_service_1 = require("../redis/redis.service");
 let TelemetryService = class TelemetryService {
     prismaService;
-    constructor(prismaService) {
+    redisService;
+    constructor(prismaService, redisService) {
         this.prismaService = prismaService;
+        this.redisService = redisService;
     }
-    async getHistory(deviceId, points = 60, startTime, endTime) {
+    async getHistory(deviceId, points, startTime, endTime) {
         const where = { deviceId };
+        const takeLimit = points || 20000;
         if (startTime || endTime) {
             where.timestamp = {};
             if (startTime)
@@ -29,8 +33,26 @@ let TelemetryService = class TelemetryService {
         return this.prismaService.telemetry.findMany({
             where,
             orderBy: { timestamp: 'desc' },
-            take: points,
+            take: takeLimit,
         });
+    }
+    async getAggregatedHistory(deviceId, startTime, endTime) {
+        return this.prismaService.$queryRaw `
+            SELECT 
+                date_trunc('minute', timestamp) as "timestamp",
+                AVG(voltage) as "voltage",
+                AVG(current) as "current",
+                AVG(power) as "power",
+                MAX(energy) as "energy",
+                AVG(frequency) as "frequency"
+            FROM "Telemetry"
+            WHERE "deviceId" = ${deviceId} 
+              AND "timestamp" >= ${startTime} 
+              AND "timestamp" <= ${endTime}
+            GROUP BY "timestamp"
+            ORDER BY "timestamp" DESC
+            LIMIT 5000
+        `;
     }
     async getLatest(deviceId) {
         return this.prismaService.telemetry.findFirst({
@@ -38,10 +60,15 @@ let TelemetryService = class TelemetryService {
             orderBy: { timestamp: 'desc' },
         });
     }
+    async getLatestFromRedis(deviceId) {
+        const data = await this.redisService.getClient().get(`vatio:latest:${deviceId}`);
+        return data ? JSON.parse(data) : null;
+    }
 };
 exports.TelemetryService = TelemetryService;
 exports.TelemetryService = TelemetryService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        redis_service_1.RedisService])
 ], TelemetryService);
 //# sourceMappingURL=telemetry.service.js.map

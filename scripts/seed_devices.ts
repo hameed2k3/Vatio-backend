@@ -15,8 +15,6 @@ async function main() {
 
     const devices = [
         { id: 'vatio_device_001', name: 'Device-1', type: 'AC', location: 'Hall' },
-        { id: 'vatio_device_002', name: 'Device-2', type: 'AC', location: 'Room' },
-        { id: 'vatio_device_003', name: 'Device-3', type: 'DC', location: 'Kitchen' },
     ];
 
     for (const device of devices) {

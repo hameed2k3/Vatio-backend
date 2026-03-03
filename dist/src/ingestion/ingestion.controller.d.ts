@@ -5,6 +5,8 @@ export declare class IngestionController {
     private readonly redisService;
     private readonly prismaService;
     constructor(redisService: RedisService, prismaService: PrismaService);
+    handleWifiTelemetry(data: any, context: MqttContext): Promise<void>;
+    handle4GTelemetry(data: any, context: MqttContext): Promise<void>;
     handleTelemetry(data: any, context: MqttContext): Promise<void>;
     getDevices(): Promise<any[]>;
     addDevice(data: any): Promise<any>;
