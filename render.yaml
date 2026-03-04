@@ -44,3 +44,5 @@ services:
         value: vatio_backend_service
       - key: AGGREGATION_WINDOW_MS
         value: 1000
+      - key: FRONTEND_URL
+        sync: false # Set this to your Vercel URL (e.g., https://vatio.vercel.app)

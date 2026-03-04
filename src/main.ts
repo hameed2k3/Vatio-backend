@@ -6,7 +6,16 @@ import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors(); // Enable CORS for everything in dev
+
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (frontendUrl) {
+    app.enableCors({
+      origin: frontendUrl.split(','),
+      credentials: true,
+    });
+  } else {
+    app.enableCors(); // Allow all for local dev
+  }
 
   const mqttHost = process.env.MQTT_HOST || 'localhost';
   const mqttPort = process.env.MQTT_PORT || 1883;
