@@ -30,6 +30,23 @@ Detailed project documentation can be found in the [docs/](file:///c:/Users/acer
 - **Batched Persistence**: Aggregates 10 messages into 1 DB record, reducing database IOPS by 90%.
 - **Throttled Real-time**: Dashboard updates are pushed every 5s to ensure frontend stability.
 
+## 🚀 Production Deployment (Render)
+
+This repository includes a **Render Blueprint** for a seamless "one-click" deployment:
+
+1. **Go to Render Dashboard** and select **Blueprints**.
+2. **Connect this repository** (`Vatio-backend`).
+3. Render will automatically detect the [render.yaml](file:///c:/Users/Hameed/Desktop/Enarxi/Vatio/Vatio-backend/render.yaml) file and provision the entire stack:
+   - **vatio-redis**: Private Redis service.
+   - **vatio-mqtt**: Self-hosted Mosquitto (via Docker).
+   - **vatio-backend**: This NestJS service.
+4. **Configuration**: 
+   - Set your Neon `DATABASE_URL` in the Render dashboard for the `vatio-backend` service.
+   - The Root Directory for the Web Service should be `.` or empty (since this is the root of the repo).
+
+### 🔒 Secure Infrastructure
+Redis and MQTT are provisioned as **Private Services**. They are NOT exposed to the internet. The backend connects to them internally via `vatio-redis:6379` and `vatio-mqtt:1883`, ensuring maximum security and zero latency.
+
 ## 🏁 Getting Started
 
 1. **Environment Setup**: 

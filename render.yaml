@@ -1,0 +1,46 @@
+services:
+  # 1. Self-hosted Redis (Private Service)
+  - type: pservice
+    name: vatio-redis
+    runtime: image
+    image: redis:alpine
+    envVars:
+      - key: PORT
+        value: 6379
+
+  # 2. Self-hosted MQTT (Private Service)
+  - type: pservice
+    name: vatio-mqtt
+    runtime: docker
+    dockerContext: ./mosquitto
+    dockerFilePath: ./mosquitto/Dockerfile
+    envVars:
+      - key: PORT
+        value: 1883
+    # Persistent disk for MQTT data
+    disk:
+      name: mosquitto-data
+      mountPath: /mosquitto/data
+      sizeGB: 1
+
+  # 3. VATIO Backend (Web Service)
+  - type: web
+    name: vatio-backend
+    runtime: node
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    startCommand: pnpm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set this in Render Dashboard (Neon DB)
+      - key: REDIS_HOST
+        value: vatio-redis
+      - key: REDIS_PORT
+        value: 6379
+      - key: MQTT_HOST
+        value: vatio-mqtt
+      - key: MQTT_PORT
+        value: 1883
+      - key: MQTT_CLIENT_ID
+        value: vatio_backend_service
+      - key: AGGREGATION_WINDOW_MS
+        value: 1000
