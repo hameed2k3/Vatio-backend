@@ -24,22 +24,31 @@ let RedisService = class RedisService {
         this.configService = configService;
         this.streamName = this.configService.get('REDIS_STREAM_NAME', 'vatio:telemetry:stream');
     }
+    isConnected = false;
     onModuleInit() {
         this.client = new ioredis_1.default({
             host: this.configService.get('REDIS_HOST', 'localhost'),
             port: this.configService.get('REDIS_PORT', 6379),
+            maxRetriesPerRequest: 3,
+        });
+        this.client.on('connect', () => {
+            this.isConnected = true;
+            console.log('Successfully connected to Redis');
+        });
+        this.client.on('error', (err) => {
+            this.isConnected = false;
+            console.error('Redis Error:', err.message);
         });
     }
     onModuleDestroy() {
         this.client.disconnect();
     }
-    async addToStream(data, topic) {
-        const payload = JSON.stringify(data);
-        const args = [this.streamName, 'MAXLEN', '~', 100000, '*', 'data', payload];
-        if (topic) {
-            args.push('topic', topic);
-        }
-        await this.client.xadd(...args);
+    getIsConnected() {
+        return this.isConnected;
+    }
+    async pushToQueue(data, topic) {
+        const payload = JSON.stringify({ data, topic });
+        await this.client.rpush(this.streamName, payload);
     }
     async setStatus(deviceId, status, ttl = 30) {
         await this.client.set(`vatio:device:${deviceId}:status`, status, 'EX', ttl);

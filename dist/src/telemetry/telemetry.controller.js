@@ -58,6 +58,7 @@ let TelemetryController = class TelemetryController {
         })).reverse();
     }
     async getLatest(deviceId) {
+<<<<<<< HEAD
         const cached = await this.telemetryService.getLatestFromRedis(deviceId);
         if (cached) {
             return {
@@ -97,6 +98,20 @@ let TelemetryController = class TelemetryController {
             energyKwh: latest.energy,
             deviceId: latest.deviceId || deviceId,
         };
+=======
+        const records = await this.telemetryService.getHistory(deviceId, 1);
+        if (records && records.length > 0) {
+            const r = records[0];
+            return {
+                ts: r.timestamp.getTime(),
+                power: r.power,
+                voltage: r.voltage,
+                current: r.current,
+                energy: r.energy,
+            };
+        }
+        return null;
+>>>>>>> e4b2672 (feat: simulation implementation)
     }
 };
 exports.TelemetryController = TelemetryController;
