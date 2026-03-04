@@ -6,7 +6,16 @@ const app_module_1 = require("./app.module");
 const microservices_1 = require("@nestjs/microservices");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.enableCors();
+    const frontendUrl = process.env.FRONTEND_URL;
+    if (frontendUrl) {
+        app.enableCors({
+            origin: frontendUrl.split(','),
+            credentials: true,
+        });
+    }
+    else {
+        app.enableCors();
+    }
     const mqttHost = process.env.MQTT_HOST || 'localhost';
     const mqttPort = process.env.MQTT_PORT || 1883;
     app.connectMicroservice({

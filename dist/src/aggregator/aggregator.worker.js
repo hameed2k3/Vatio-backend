@@ -25,7 +25,7 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
     isRunning = true;
     groupName;
     streamName;
-    consumerName = 'consumer-1';
+    consumerName = `consumer-${Math.random().toString(36).slice(2, 6)}`;
     aggregationBuffer = new Map();
     flushInterval;
     constructor(redisService, prismaService, configService, realtimeGateway) {
@@ -47,31 +47,32 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             clearInterval(this.flushInterval);
     }
     async setupConsumerGroup() {
+        try {
+            await this.redisService.getClient().xgroup('CREATE', this.streamName, this.groupName, '$', 'MKSTREAM');
+        }
+        catch (e) {
+            if (!e.message.includes('BUSYGROUP')) {
+                this.logger.error(`Error creating consumer group: ${e.message}`);
+            }
+        }
     }
     async startConsumerLoop() {
         while (this.isRunning) {
-            if (!this.redisService.getIsConnected()) {
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                await this.setupConsumerGroup();
-                continue;
-            }
             try {
-<<<<<<< HEAD
-                const results = await this.redisService.getClient().xreadgroup('GROUP', this.groupName, this.consumerName, 'COUNT', 100, 'BLOCK', 1000, 'STREAMS', this.streamName, '>');
+                const results = await this.redisService.getClient().xreadgroup('GROUP', this.groupName, this.consumerName, 'COUNT', 50, 'BLOCK', 1000, 'STREAMS', this.streamName, '>');
                 if (results) {
                     for (const [_, messages] of results) {
                         for (const [id, fields] of messages) {
-                            const dataIndex = fields.indexOf('data');
-                            const topicIndex = fields.indexOf('topic');
-                            if (dataIndex !== -1 && topicIndex !== -1) {
-                                const payload = fields[dataIndex + 1];
-                                const topic = fields[topicIndex + 1];
-                                const deviceId = topic.split('/').pop();
+                            const dataIdx = fields.indexOf('data');
+                            const topicIdx = fields.indexOf('topic');
+                            if (dataIdx !== -1) {
+                                const payload = fields[dataIdx + 1];
+                                const topic = topicIdx !== -1 ? fields[topicIdx + 1] : '';
                                 try {
                                     const data = this.parseHardwareString(payload);
                                     if (data) {
                                         let deviceId = topic.split('/').pop();
-                                        if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
+                                        if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading' || !deviceId) {
                                             deviceId = 'NEWDEV_01';
                                         }
                                         data.deviceId = deviceId;
@@ -83,22 +84,7 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                                 }
                             }
                             await this.redisService.getClient().xack(this.streamName, this.groupName, id);
-=======
-                const result = await this.redisService.getClient().blpop(this.streamName, 1);
-                if (result) {
-                    const [_, payloadString] = result;
-                    const { data: rawData, topic } = JSON.parse(payloadString);
-                    const deviceId = topic ? topic.split('/').pop() : 'unknown';
-                    try {
-                        const data = this.parseHardwareString(rawData);
-                        if (data) {
-                            data.deviceId = deviceId;
-                            this.bufferData(data);
->>>>>>> e4b2672 (feat: simulation implementation)
                         }
-                    }
-                    catch (e) {
-                        this.logger.warn(`Failed to parse hardware payload: ${rawData}`);
                     }
                 }
             }
@@ -109,7 +95,6 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
         }
     }
     parseHardwareString(payload) {
-        this.logger.debug(`Raw Hardware Payload: ${payload}`);
         const dataMap = {};
         try {
             let clean = payload.trim();
@@ -121,66 +106,35 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             kvs.forEach(kv => {
                 const parts = kv.split(':').map(p => p.trim());
                 if (parts.length === 2) {
-                    const [key, val] = parts;
-                    dataMap[key] = parseFloat(val);
+                    dataMap[parts[0]] = parseFloat(parts[1]);
                 }
             });
         }
         catch (err) {
             this.logger.error(`Error splitting payload: ${err.message}`);
+            return null;
         }
         const energy = dataMap['0'];
-        this.logger.debug(`Energy at index 0: ${energy}`);
         return {
             deviceId: 'unknown',
-<<<<<<< HEAD
             energy: isNaN(energy) ? 0 : energy,
             voltage: dataMap['16'] || dataMap['10'] || 0,
             current: dataMap['32'] || dataMap['26'] || 0,
             power: dataMap['51'] || 0,
-=======
-            energy: dataMap['0'] || 0,
-            voltageL1: dataMap['10'] || 0,
-            voltageL2: dataMap['12'] || 0,
-            voltageL3: dataMap['14'] || 0,
-            voltageAvg: dataMap['16'] || 0,
-            voltage: dataMap['10'] || 0,
-            currentL1: dataMap['26'] || 0,
-            currentL2: dataMap['28'] || 0,
-            currentL3: dataMap['30'] || 0,
-            currentAvg: dataMap['32'] || 0,
-            current: dataMap['26'] || 0,
-            pfL1: dataMap['39'] || 0,
-            pfL2: dataMap['40'] || 0,
-            pfL3: dataMap['41'] || 0,
-            pfSystem: dataMap['42'] || 0,
-            pfAvg: dataMap['43'] || 0,
->>>>>>> e4b2672 (feat: simulation implementation)
             frequency: dataMap['44'] || 0,
-            kwL1: dataMap['45'] || 0,
-            kwL2: dataMap['47'] || 0,
-            kwL3: dataMap['49'] || 0,
-            power: dataMap['51'] || 0,
-            kva: dataMap['53'] || 0,
-            kvar: dataMap['55'] || 0,
-            thdVL1: dataMap['69'] || 0,
-            thdVL2: dataMap['70'] || 0,
-            thdVL3: dataMap['71'] || 0,
             temp: 0,
         };
     }
     bufferData(data) {
-        const deviceId = data.deviceId;
-        if (!deviceId)
+        if (!data.deviceId)
             return;
-        if (!this.aggregationBuffer.has(deviceId)) {
-            this.aggregationBuffer.set(deviceId, []);
+        if (!this.aggregationBuffer.has(data.deviceId)) {
+            this.aggregationBuffer.set(data.deviceId, []);
         }
-        const buffer = this.aggregationBuffer.get(deviceId);
-        buffer.push(data);
+        this.aggregationBuffer.get(data.deviceId).push(data);
     }
     startAggregationFlush() {
-        const interval = this.configService.get('AGGREGATION_WINDOW_MS', 1000);
+        const interval = this.configService.get('AGGREGATION_WINDOW_MS', 5000);
         this.flushInterval = setInterval(() => this.flush(), interval);
     }
     async flush() {
@@ -188,11 +142,9 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             return;
         const snapshot = new Map(this.aggregationBuffer);
         this.aggregationBuffer.clear();
-        this.logger.log(`Aggregating and flushing ${snapshot.size} devices`);
         for (const [deviceId, records] of snapshot) {
             try {
                 const aggregated = this.aggregateRecords(deviceId, records);
-                this.logger.log(`Device ${deviceId} Aggregated: ${JSON.stringify(aggregated)}`);
                 await this.persistToDb(aggregated);
                 await this.redisService.setStatus(deviceId, 'online', 15);
                 await this.redisService.getClient().set(`vatio:latest:${deviceId}`, JSON.stringify(aggregated), 'EX', 60);
@@ -216,27 +168,6 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             energy: max('energy'),
             temp: avg('temp'),
             frequency: avg('frequency'),
-            voltageL1: avg('voltageL1'),
-            voltageL2: avg('voltageL2'),
-            voltageL3: avg('voltageL3'),
-            voltageAvg: avg('voltageAvg'),
-            currentL1: avg('currentL1'),
-            currentL2: avg('currentL2'),
-            currentL3: avg('currentL3'),
-            currentAvg: avg('currentAvg'),
-            pfL1: avg('pfL1'),
-            pfL2: avg('pfL2'),
-            pfL3: avg('pfL3'),
-            pfSystem: avg('pfSystem'),
-            pfAvg: avg('pfAvg'),
-            kwL1: avg('kwL1'),
-            kwL2: avg('kwL2'),
-            kwL3: avg('kwL3'),
-            kva: avg('kva'),
-            kvar: avg('kvar'),
-            thdVL1: avg('thdVL1'),
-            thdVL2: avg('thdVL2'),
-            thdVL3: avg('thdVL3'),
         };
     }
     async persistToDb(data) {

@@ -10,7 +10,7 @@ export declare class RedisService implements OnModuleInit, OnModuleDestroy {
     onModuleInit(): void;
     onModuleDestroy(): void;
     getIsConnected(): boolean;
-    pushToQueue(data: any, topic?: string): Promise<void>;
+    addToStream(data: any, topic?: string): Promise<void>;
     setStatus(deviceId: string, status: string, ttl?: number): Promise<void>;
     getStatus(deviceId: string): Promise<string>;
     getClient(): Redis;

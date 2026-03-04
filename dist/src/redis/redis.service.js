@@ -46,9 +46,13 @@ let RedisService = class RedisService {
     getIsConnected() {
         return this.isConnected;
     }
-    async pushToQueue(data, topic) {
-        const payload = JSON.stringify({ data, topic });
-        await this.client.rpush(this.streamName, payload);
+    async addToStream(data, topic) {
+        const payload = JSON.stringify(data);
+        const args = [this.streamName, 'MAXLEN', '~', 100000, '*', 'data', payload];
+        if (topic) {
+            args.push('topic', topic);
+        }
+        await this.client.xadd(...args);
     }
     async setStatus(deviceId, status, ttl = 30) {
         await this.client.set(`vatio:device:${deviceId}:status`, status, 'EX', ttl);

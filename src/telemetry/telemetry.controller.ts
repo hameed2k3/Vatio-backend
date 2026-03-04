@@ -97,20 +97,4 @@ export class TelemetryController {
             deviceId: latest.deviceId || deviceId,
         };
     }
-
-    @Get(':deviceId/latest')
-    async getLatest(@Param('deviceId') deviceId: string) {
-        const records = await this.telemetryService.getHistory(deviceId, 1);
-        if (records && records.length > 0) {
-            const r = records[0];
-            return {
-                ts: r.timestamp.getTime(),
-                power: r.power,
-                voltage: r.voltage,
-                current: r.current,
-                energy: r.energy,
-            };
-        }
-        return null;
-    }
 }

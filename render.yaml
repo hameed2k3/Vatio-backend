@@ -27,7 +27,7 @@ services:
   - type: web
     name: vatio-backend
     runtime: node
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    buildCommand: pnpm install --no-frozen-lockfile && npx prisma generate && pnpm run build
     startCommand: pnpm run start:prod
     envVars:
       - key: DATABASE_URL

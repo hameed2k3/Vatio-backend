@@ -39,9 +39,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         return this.isConnected;
     }
 
-    async pushToQueue(data: any, topic?: string) {
-        const payload = JSON.stringify({ data, topic });
-        await this.client.rpush(this.streamName, payload);
+    async addToStream(data: any, topic?: string) {
+        const payload = JSON.stringify(data);
+        const args: (string | number)[] = [this.streamName, 'MAXLEN', '~', 100000, '*', 'data', payload];
+        if (topic) {
+            args.push('topic', topic);
+        }
+        await (this.client as any).xadd(...args);
     }
 
     async setStatus(deviceId: string, status: string, ttl: number = 30) {

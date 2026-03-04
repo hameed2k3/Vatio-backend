@@ -24,7 +24,7 @@ export class IngestionController {
     async handleTelemetry(@Payload() data: any, @Ctx() context: MqttContext) {
         // Pipe directly to Redis Queue for sub-millisecond ingestion
         const topic = context.getTopic();
-        await this.redisService.pushToQueue(data, topic);
+        await this.redisService.addToStream(data, topic);
     }
 
     @Get('devices')
