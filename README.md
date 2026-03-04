@@ -48,3 +48,21 @@ Detailed project documentation can be found in the [docs/](file:///c:/Users/acer
 - **Horizontal**: Use Redis Consumer Groups to distribute the Aggregator workload.
 - **Persistence**: Easily switch to specialized time-series storage (TimescaleDB) when data exceeds 100M records.
 - **Broker**: Upgrade to EMQX cluster for >50k concurrent device connections.
+
+---
+
+## 🚀 Production Deployment (Render)
+
+For the easiest production setup, use the **Render Blueprint**:
+
+1. **Go to Render Dashboard** and select **Blueprints**.
+2. **Connect your repository**.
+3. Render will automatically detect the [render.yaml](file:///c:/Users/Hameed/Desktop/Enarxi/Vatio/render.yaml) file and provision:
+   - **vatio-redis** (Private Service)
+   - **vatio-mqtt** (Private Service with Docker)
+   - **vatio-backend** (Web Service)
+4. **Environment Variables**:
+   Set `DATABASE_URL` (your Neon DB link) in the Render dashboard for the `vatio-backend` service.
+
+### 🔒 Self-Hosted (Private) Infrastructure
+The Redis and MQTT services are deployed as **Private Services**. This means they are only accessible to the backend service via their internal hostnames (`vatio-redis` and `vatio-mqtt`). This is more secure as they are not exposed to the public internet.

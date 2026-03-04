@@ -36,31 +36,26 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     private async setupConsumerGroup() {
-        try {
-            await this.redisService.getClient().xgroup('CREATE', this.streamName, this.groupName, '$', 'MKSTREAM');
-        } catch (e) {
-            if (!e.message.includes('BUSYGROUP')) {
-                this.logger.error(`Error creating consumer group: ${e.message}`);
-            }
-        }
+        // No setup needed for Lists
     }
 
     private async startConsumerLoop() {
         while (this.isRunning) {
+            if (!this.redisService.getIsConnected()) {
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                await this.setupConsumerGroup();
+                continue;
+            }
             try {
-                const results = await this.redisService.getClient().xreadgroup(
-                    'GROUP', this.groupName, this.consumerName,
-                    'COUNT', 100,
-                    'BLOCK', 1000,
-                    'STREAMS', this.streamName, '>',
-                ) as any[];
+                // Use BLPOP for high-efficiency queue consumption (Redis 3.x compatible)
+                const result = await this.redisService.getClient().blpop(this.streamName, 1);
 
-                if (results) {
-                    for (const [_, messages] of results) {
-                        for (const [id, fields] of messages) {
-                            const dataIndex = fields.indexOf('data');
-                            const topicIndex = fields.indexOf('topic');
+                if (result) {
+                    const [_, payloadString] = result;
+                    const { data: rawData, topic } = JSON.parse(payloadString);
+                    const deviceId = topic ? topic.split('/').pop() : 'unknown';
 
+<<<<<<< HEAD
                             if (dataIndex !== -1 && topicIndex !== -1) {
                                 const payload = fields[dataIndex + 1];
                                 const topic = fields[topicIndex + 1];
@@ -85,7 +80,16 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
                                 }
                             }
                             await this.redisService.getClient().xack(this.streamName, this.groupName, id);
+=======
+                    try {
+                        const data = this.parseHardwareString(rawData);
+                        if (data) {
+                            data.deviceId = deviceId;
+                            this.bufferData(data);
+>>>>>>> e4b2672 (feat: simulation implementation)
                         }
+                    } catch (e) {
+                        this.logger.warn(`Failed to parse hardware payload: ${rawData}`);
                     }
                 }
             } catch (e) {
@@ -96,9 +100,15 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     private parseHardwareString(payload: string): any {
+<<<<<<< HEAD
         // Format: "[0 : 1514.0759, 1 : 0.00, ...]" or [0 : 1514.0759, ...]
         this.logger.debug(`Raw Hardware Payload: ${payload}`);
 
+=======
+        // Format: [0 : val, 1 : val, ...]
+        const clean = payload.replace('[', '').replace(']', '');
+        const pairs = clean.split(',');
+>>>>>>> e4b2672 (feat: simulation implementation)
         const dataMap: any = {};
         try {
             // Remove surrounding quotes if present, then brackets
@@ -124,6 +134,7 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
         const energy = dataMap['0'];
         this.logger.debug(`Energy at index 0: ${energy}`);
 
+<<<<<<< HEAD
         return {
             deviceId: 'unknown',
             energy: isNaN(energy) ? 0 : energy,
@@ -131,6 +142,46 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
             current: dataMap['32'] || dataMap['26'] || 0,
             power: dataMap['51'] || 0,
             frequency: dataMap['44'] || 0,
+=======
+        // Map ALL indices to object properties based on Vatio_WiFi_4G.ino
+        return {
+            deviceId: 'unknown',
+            // Energy
+            energy: dataMap['0'] || 0,
+            // Per-phase Voltages
+            voltageL1: dataMap['10'] || 0,
+            voltageL2: dataMap['12'] || 0,
+            voltageL3: dataMap['14'] || 0,
+            voltageAvg: dataMap['16'] || 0,
+            // Aggregate voltage (backward compat)
+            voltage: dataMap['10'] || 0,
+            // Per-phase Currents
+            currentL1: dataMap['26'] || 0,
+            currentL2: dataMap['28'] || 0,
+            currentL3: dataMap['30'] || 0,
+            currentAvg: dataMap['32'] || 0,
+            current: dataMap['26'] || 0,
+            // Per-phase Power Factor
+            pfL1: dataMap['39'] || 0,
+            pfL2: dataMap['40'] || 0,
+            pfL3: dataMap['41'] || 0,
+            pfSystem: dataMap['42'] || 0,
+            pfAvg: dataMap['43'] || 0,
+            // Frequency
+            frequency: dataMap['44'] || 0,
+            // Per-phase kW
+            kwL1: dataMap['45'] || 0,
+            kwL2: dataMap['47'] || 0,
+            kwL3: dataMap['49'] || 0,
+            // Total Power
+            power: dataMap['51'] || 0,
+            kva: dataMap['53'] || 0,
+            kvar: dataMap['55'] || 0,
+            // THD
+            thdVL1: dataMap['69'] || 0,
+            thdVL2: dataMap['70'] || 0,
+            thdVL3: dataMap['71'] || 0,
+>>>>>>> e4b2672 (feat: simulation implementation)
             temp: 0,
         };
     }
@@ -184,26 +235,47 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     private aggregateRecords(deviceId: string, records: any[]) {
-        // Simple average aggregation for 5s window
         const count = records.length;
-        const sum = records.reduce((acc, r) => ({
-            voltage: acc.voltage + (r.voltage || 0),
-            current: acc.current + (r.current || 0),
-            power: acc.power + (r.power || 0),
-            energy: Math.max(acc.energy, r.energy || 0), // Energy usually cumulative
-            temp: acc.temp + (r.temp || 0),
-            frequency: acc.frequency + (r.frequency || 0),
-        }), { voltage: 0, current: 0, power: 0, energy: 0, temp: 0, frequency: 0 });
+        const avg = (field: string) => records.reduce((s, r) => s + (r[field] || 0), 0) / count;
+        const max = (field: string) => records.reduce((m, r) => Math.max(m, r[field] || 0), 0);
 
         return {
             deviceId,
             timestamp: new Date(),
-            voltage: sum.voltage / count,
-            current: sum.current / count,
-            power: sum.power / count,
-            energy: sum.energy,
-            temp: sum.temp / count,
-            frequency: sum.frequency / count,
+            // Backward-compatible fields
+            voltage: avg('voltage'),
+            current: avg('current'),
+            power: avg('power'),
+            energy: max('energy'),
+            temp: avg('temp'),
+            frequency: avg('frequency'),
+            // Per-phase voltages
+            voltageL1: avg('voltageL1'),
+            voltageL2: avg('voltageL2'),
+            voltageL3: avg('voltageL3'),
+            voltageAvg: avg('voltageAvg'),
+            // Per-phase currents
+            currentL1: avg('currentL1'),
+            currentL2: avg('currentL2'),
+            currentL3: avg('currentL3'),
+            currentAvg: avg('currentAvg'),
+            // Per-phase PF
+            pfL1: avg('pfL1'),
+            pfL2: avg('pfL2'),
+            pfL3: avg('pfL3'),
+            pfSystem: avg('pfSystem'),
+            pfAvg: avg('pfAvg'),
+            // Per-phase kW
+            kwL1: avg('kwL1'),
+            kwL2: avg('kwL2'),
+            kwL3: avg('kwL3'),
+            // Apparent/Reactive
+            kva: avg('kva'),
+            kvar: avg('kvar'),
+            // THD
+            thdVL1: avg('thdVL1'),
+            thdVL2: avg('thdVL2'),
+            thdVL3: avg('thdVL3'),
         };
     }
 

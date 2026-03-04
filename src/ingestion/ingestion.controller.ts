@@ -22,9 +22,9 @@ export class IngestionController {
 
     @MessagePattern('vatio/telemetry/#')
     async handleTelemetry(@Payload() data: any, @Ctx() context: MqttContext) {
-        // Pipe directly to Redis Stream for sub-millisecond ingestion
+        // Pipe directly to Redis Queue for sub-millisecond ingestion
         const topic = context.getTopic();
-        await this.redisService.addToStream(data, topic);
+        await this.redisService.pushToQueue(data, topic);
     }
 
     @Get('devices')

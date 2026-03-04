@@ -32,7 +32,7 @@ let IngestionController = class IngestionController {
     }
     async handleTelemetry(data, context) {
         const topic = context.getTopic();
-        await this.redisService.addToStream(data, topic);
+        await this.redisService.pushToQueue(data, topic);
     }
     async getDevices() {
         const devices = await this.prismaService.device.findMany({

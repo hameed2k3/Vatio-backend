@@ -47,18 +47,16 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             clearInterval(this.flushInterval);
     }
     async setupConsumerGroup() {
-        try {
-            await this.redisService.getClient().xgroup('CREATE', this.streamName, this.groupName, '$', 'MKSTREAM');
-        }
-        catch (e) {
-            if (!e.message.includes('BUSYGROUP')) {
-                this.logger.error(`Error creating consumer group: ${e.message}`);
-            }
-        }
     }
     async startConsumerLoop() {
         while (this.isRunning) {
+            if (!this.redisService.getIsConnected()) {
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                await this.setupConsumerGroup();
+                continue;
+            }
             try {
+<<<<<<< HEAD
                 const results = await this.redisService.getClient().xreadgroup('GROUP', this.groupName, this.consumerName, 'COUNT', 100, 'BLOCK', 1000, 'STREAMS', this.streamName, '>');
                 if (results) {
                     for (const [_, messages] of results) {
@@ -85,7 +83,22 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                                 }
                             }
                             await this.redisService.getClient().xack(this.streamName, this.groupName, id);
+=======
+                const result = await this.redisService.getClient().blpop(this.streamName, 1);
+                if (result) {
+                    const [_, payloadString] = result;
+                    const { data: rawData, topic } = JSON.parse(payloadString);
+                    const deviceId = topic ? topic.split('/').pop() : 'unknown';
+                    try {
+                        const data = this.parseHardwareString(rawData);
+                        if (data) {
+                            data.deviceId = deviceId;
+                            this.bufferData(data);
+>>>>>>> e4b2672 (feat: simulation implementation)
                         }
+                    }
+                    catch (e) {
+                        this.logger.warn(`Failed to parse hardware payload: ${rawData}`);
                     }
                 }
             }
@@ -120,11 +133,39 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
         this.logger.debug(`Energy at index 0: ${energy}`);
         return {
             deviceId: 'unknown',
+<<<<<<< HEAD
             energy: isNaN(energy) ? 0 : energy,
             voltage: dataMap['16'] || dataMap['10'] || 0,
             current: dataMap['32'] || dataMap['26'] || 0,
             power: dataMap['51'] || 0,
+=======
+            energy: dataMap['0'] || 0,
+            voltageL1: dataMap['10'] || 0,
+            voltageL2: dataMap['12'] || 0,
+            voltageL3: dataMap['14'] || 0,
+            voltageAvg: dataMap['16'] || 0,
+            voltage: dataMap['10'] || 0,
+            currentL1: dataMap['26'] || 0,
+            currentL2: dataMap['28'] || 0,
+            currentL3: dataMap['30'] || 0,
+            currentAvg: dataMap['32'] || 0,
+            current: dataMap['26'] || 0,
+            pfL1: dataMap['39'] || 0,
+            pfL2: dataMap['40'] || 0,
+            pfL3: dataMap['41'] || 0,
+            pfSystem: dataMap['42'] || 0,
+            pfAvg: dataMap['43'] || 0,
+>>>>>>> e4b2672 (feat: simulation implementation)
             frequency: dataMap['44'] || 0,
+            kwL1: dataMap['45'] || 0,
+            kwL2: dataMap['47'] || 0,
+            kwL3: dataMap['49'] || 0,
+            power: dataMap['51'] || 0,
+            kva: dataMap['53'] || 0,
+            kvar: dataMap['55'] || 0,
+            thdVL1: dataMap['69'] || 0,
+            thdVL2: dataMap['70'] || 0,
+            thdVL3: dataMap['71'] || 0,
             temp: 0,
         };
     }
@@ -164,23 +205,38 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
     }
     aggregateRecords(deviceId, records) {
         const count = records.length;
-        const sum = records.reduce((acc, r) => ({
-            voltage: acc.voltage + (r.voltage || 0),
-            current: acc.current + (r.current || 0),
-            power: acc.power + (r.power || 0),
-            energy: Math.max(acc.energy, r.energy || 0),
-            temp: acc.temp + (r.temp || 0),
-            frequency: acc.frequency + (r.frequency || 0),
-        }), { voltage: 0, current: 0, power: 0, energy: 0, temp: 0, frequency: 0 });
+        const avg = (field) => records.reduce((s, r) => s + (r[field] || 0), 0) / count;
+        const max = (field) => records.reduce((m, r) => Math.max(m, r[field] || 0), 0);
         return {
             deviceId,
             timestamp: new Date(),
-            voltage: sum.voltage / count,
-            current: sum.current / count,
-            power: sum.power / count,
-            energy: sum.energy,
-            temp: sum.temp / count,
-            frequency: sum.frequency / count,
+            voltage: avg('voltage'),
+            current: avg('current'),
+            power: avg('power'),
+            energy: max('energy'),
+            temp: avg('temp'),
+            frequency: avg('frequency'),
+            voltageL1: avg('voltageL1'),
+            voltageL2: avg('voltageL2'),
+            voltageL3: avg('voltageL3'),
+            voltageAvg: avg('voltageAvg'),
+            currentL1: avg('currentL1'),
+            currentL2: avg('currentL2'),
+            currentL3: avg('currentL3'),
+            currentAvg: avg('currentAvg'),
+            pfL1: avg('pfL1'),
+            pfL2: avg('pfL2'),
+            pfL3: avg('pfL3'),
+            pfSystem: avg('pfSystem'),
+            pfAvg: avg('pfAvg'),
+            kwL1: avg('kwL1'),
+            kwL2: avg('kwL2'),
+            kwL3: avg('kwL3'),
+            kva: avg('kva'),
+            kvar: avg('kvar'),
+            thdVL1: avg('thdVL1'),
+            thdVL2: avg('thdVL2'),
+            thdVL3: avg('thdVL3'),
         };
     }
     async persistToDb(data) {
