@@ -4,11 +4,7 @@ const axios = require('axios');
 const BROKER_URL = 'mqtt://localhost:1883';
 const BACKEND_URL = 'http://127.0.0.1:3000/ingestion/devices';
 const DISCOVERY_INTERVAL_MS = 10000;
-<<<<<<< HEAD
 const SIMULATION_INTERVAL_MS = 1000;
-=======
-const SIMULATION_INTERVAL_MS = 1000; // 1 second per tick (realistic meter read rate)
->>>>>>> e4b2672 (feat: simulation implementation)
 
 let clients = new Map();
 

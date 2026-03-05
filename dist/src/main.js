@@ -16,19 +16,24 @@ async function bootstrap() {
     else {
         app.enableCors();
     }
-    const mqttHost = process.env.MQTT_HOST || 'localhost';
+    const mqttHost = process.env.MQTT_HOST;
     const mqttPort = process.env.MQTT_PORT || 1883;
-    app.connectMicroservice({
-        transport: microservices_1.Transport.MQTT,
-        options: {
-            url: `mqtt://${mqttHost}:${mqttPort}`,
-            clientId: process.env.MQTT_CLIENT_ID || 'vatio_backend_service',
-        },
-    });
-    await app.startAllMicroservices();
+    if (mqttHost) {
+        app.connectMicroservice({
+            transport: microservices_1.Transport.MQTT,
+            options: {
+                url: `mqtt://${mqttHost}:${mqttPort}`,
+                clientId: process.env.MQTT_CLIENT_ID || 'vatio_backend_service',
+            },
+        });
+        await app.startAllMicroservices();
+        console.log(`MQTT Ingestion connected to: mqtt://${mqttHost}:${mqttPort}`);
+    }
+    else {
+        console.log('MQTT_HOST not set — MQTT ingestion disabled. Use Redis-based simulation instead.');
+    }
     await app.listen(process.env.PORT || 3000, '0.0.0.0');
     console.log(`VATIO Backend is running on: ${await app.getUrl()}`);
-    console.log(`MQTT Ingestion connected to: mqtt://${mqttHost}:${mqttPort}`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map
