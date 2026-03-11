@@ -107,6 +107,9 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
         this.logger.debug(`Energy at index 0: ${energy}`);
         return {
             deviceId: 'unknown',
+            importEnergy: isNaN(energy) ? 0 : energy,
+            exportEnergy: dataMap['1'] || 0,
+            netEnergy: dataMap['2'] || 0,
             energy: isNaN(energy) ? 0 : energy,
             voltageL1: dataMap['10'] || 0,
             voltageL2: dataMap['12'] || 0,
@@ -133,6 +136,9 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             thdVL1: dataMap['69'] || 0,
             thdVL2: dataMap['70'] || 0,
             thdVL3: dataMap['71'] || 0,
+            thdIL1: dataMap['72'] || 0,
+            thdIL2: dataMap['73'] || 0,
+            thdIL3: dataMap['74'] || 0,
             temp: 0,
         };
     }
@@ -173,23 +179,50 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
     aggregateRecords(deviceId, records) {
         const count = records.length;
         const avg = (field) => records.reduce((s, r) => s + (r[field] || 0), 0) / count;
-        const max = (field) => records.reduce((m, r) => Math.max(m, r[field] || 0), 0);
+        const max = (field) => records.reduce((m, r) => Math.max(m, r[field] || 0), -Infinity);
+        const min = (field) => records.reduce((m, r) => Math.min(m, r[field] || 0), Infinity);
+        const vAvg = avg('voltage');
+        const iAvg = avg('current');
+        const pAvg = avg('power');
+        const calcUnbalance = (phases, average) => {
+            if (average === 0)
+                return 0;
+            const maxDev = Math.max(...phases.map(p => Math.abs(p - average)));
+            return (maxDev / average) * 100;
+        };
+        const vL1 = avg('voltageL1');
+        const vL2 = avg('voltageL2');
+        const vL3 = avg('voltageL3');
+        const cL1 = avg('currentL1');
+        const cL2 = avg('currentL2');
+        const cL3 = avg('currentL3');
         return {
             deviceId,
             timestamp: new Date(),
-            voltage: avg('voltage'),
-            current: avg('current'),
-            power: avg('power'),
+            voltage: vAvg,
+            voltageMin: min('voltage'),
+            voltageMax: max('voltage'),
+            current: iAvg,
+            currentMin: min('current'),
+            currentMax: max('current'),
+            power: pAvg,
+            powerMin: min('power'),
+            powerMax: max('power'),
             energy: max('energy'),
+            netEnergy: avg('netEnergy'),
+            importEnergy: max('importEnergy'),
+            exportEnergy: max('exportEnergy'),
             temp: avg('temp'),
             frequency: avg('frequency'),
-            voltageL1: avg('voltageL1'),
-            voltageL2: avg('voltageL2'),
-            voltageL3: avg('voltageL3'),
+            voltageUnbalance: calcUnbalance([vL1, vL2, vL3], vAvg),
+            currentUnbalance: calcUnbalance([cL1, cL2, cL3], iAvg),
+            voltageL1: vL1,
+            voltageL2: vL2,
+            voltageL3: vL3,
             voltageAvg: avg('voltageAvg'),
-            currentL1: avg('currentL1'),
-            currentL2: avg('currentL2'),
-            currentL3: avg('currentL3'),
+            currentL1: cL1,
+            currentL2: cL2,
+            currentL3: cL3,
             currentAvg: avg('currentAvg'),
             pfL1: avg('pfL1'),
             pfL2: avg('pfL2'),
@@ -204,6 +237,9 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
             thdVL1: avg('thdVL1'),
             thdVL2: avg('thdVL2'),
             thdVL3: avg('thdVL3'),
+            thdIL1: avg('thdIL1'),
+            thdIL2: avg('thdIL2'),
+            thdIL3: avg('thdIL3'),
         };
     }
     async persistToDb(data) {
@@ -239,6 +275,18 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                 thdVL1: data.thdVL1,
                 thdVL2: data.thdVL2,
                 thdVL3: data.thdVL3,
+                thdIL1: data.thdIL1,
+                thdIL2: data.thdIL2,
+                thdIL3: data.thdIL3,
+                voltageMin: data.voltageMin,
+                voltageMax: data.voltageMax,
+                currentMin: data.currentMin,
+                currentMax: data.currentMax,
+                powerMin: data.powerMin,
+                powerMax: data.powerMax,
+                voltageUnbalance: data.voltageUnbalance,
+                currentUnbalance: data.currentUnbalance,
+                netEnergy: data.netEnergy,
                 temp: data.temp,
             },
         });

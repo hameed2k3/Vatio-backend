@@ -9,7 +9,16 @@ export declare class TelemetryController {
         current: any;
         frequency: any;
         energyKwh: any;
+        energyConsumption: any;
         deviceId: any;
+        voltageMin: any;
+        voltageMax: any;
+        currentMin: any;
+        currentMax: any;
+        powerMin: any;
+        powerMax: any;
+        voltageUnbalance: any;
+        currentUnbalance: any;
         phase1Voltage: any;
         phase2Voltage: any;
         phase3Voltage: any;
@@ -24,10 +33,12 @@ export declare class TelemetryController {
         phase1PF: any;
         phase2PF: any;
         phase3PF: any;
-        thd: any;
         thdVL1: any;
         thdVL2: any;
         thdVL3: any;
+        thdIL1: any;
+        thdIL2: any;
+        thdIL3: any;
     }[]>;
     getLatest(deviceId: string): Promise<any>;
 }

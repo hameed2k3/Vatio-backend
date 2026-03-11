@@ -14,52 +14,43 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
+const auth_service_1 = require("./auth.service");
 let AuthController = class AuthController {
-    async login(body) {
-        const { email, password } = body;
-        const adminEmail = process.env.ADMIN_EMAIL || 'admin@vatio.io';
-        const adminPass = process.env.ADMIN_PASSWORD || 'password';
-        if (email === adminEmail && password === adminPass) {
-            return {
-                user: { id: 'U001', name: 'Admin', email },
-                token: 'real-backend-jwt-token'
-            };
-        }
-        throw new common_1.UnauthorizedException('Invalid credentials');
-    }
-    async verifyOtp(body) {
-        return {
-            user: { id: 'U001', name: 'Admin', email: body.email },
-            token: 'real-backend-jwt-token'
-        };
+    authService;
+    constructor(authService) {
+        this.authService = authService;
     }
     async register(body) {
-        return { success: true, message: 'OTP sent' };
+        return this.authService.register(body.email, body.password, body.name);
+    }
+    async login(body) {
+        return this.authService.login(body.email, body.password);
     }
 };
 exports.AuthController = AuthController;
 __decorate([
-    (0, common_1.Post)('login'),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "login", null);
-__decorate([
-    (0, common_1.Post)('verify-otp'),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "verifyOtp", null);
-__decorate([
     (0, common_1.Post)('register'),
+    (0, swagger_1.ApiOperation)({ summary: 'Register a new user' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'User successfully created' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
+__decorate([
+    (0, common_1.Post)('login'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Login and get JWT token' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Login successful' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "login", null);
 exports.AuthController = AuthController = __decorate([
-    (0, common_1.Controller)('auth')
+    (0, swagger_1.ApiTags)('Authentication'),
+    (0, common_1.Controller)('auth'),
+    __metadata("design:paramtypes", [auth_service_1.AuthService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

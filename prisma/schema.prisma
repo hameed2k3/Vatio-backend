@@ -5,11 +5,22 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("user")
+  devices   Device[]
+  createdAt DateTime @default(now())
 }
 
 model Device {
@@ -17,6 +28,8 @@ model Device {
   name         String?
   type         String?     // e.g., "Inverter", "SmartMeter"
   location     String?
+  ownerId      String?
+  owner        User?       @relation(fields: [ownerId], references: [id])
   telemetries  Telemetry[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -64,6 +77,22 @@ model Telemetry {
   thdVL1    Float?
   thdVL2    Float?
   thdVL3    Float?
+  thdIL1    Float?
+  thdIL2    Float?
+  thdIL3    Float?
+
+  // Unbalance & Statistics
+  voltageUnbalance Float?
+  currentUnbalance Float?
+  voltageMin       Float?
+  voltageMax       Float?
+  currentMin       Float?
+  currentMax       Float?
+  powerMin         Float?
+  powerMax         Float?
+
+  // Extended Energy
+  netEnergy Float? // Import - Export
 
   // Environment/Status
   temp      Float?   // Celsius

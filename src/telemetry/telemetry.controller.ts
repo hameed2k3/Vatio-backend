@@ -1,11 +1,18 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { TelemetryService } from './telemetry.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@ApiTags('Telemetry')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('telemetry')
 export class TelemetryController {
     constructor(private readonly telemetryService: TelemetryService) { }
 
     @Get(':deviceId/history')
+    @ApiOperation({ summary: 'Get historical telemetry data for a device' })
+    @ApiResponse({ status: 200, description: 'List of telemetry records (raw or aggregated)' })
     async getHistory(
         @Param('deviceId') deviceId: string,
         @Query('points') points?: string,
@@ -38,7 +45,18 @@ export class TelemetryController {
             current: r.current,
             frequency: r.frequency || 50,
             energyKwh: r.energy,
+            energyConsumption: r.energyConsumption || 0,
             deviceId: r.deviceId || deviceId,
+
+            // Stats
+            voltageMin: r.voltageMin ?? r.voltage,
+            voltageMax: r.voltageMax ?? r.voltage,
+            currentMin: r.currentMin ?? r.current,
+            currentMax: r.currentMax ?? r.current,
+            powerMin: r.powerMin ?? r.power,
+            powerMax: r.powerMax ?? r.power,
+            voltageUnbalance: r.voltageUnbalance ?? 0,
+            currentUnbalance: r.currentUnbalance ?? 0,
 
             // Actual per-phase data from DB
             phase1Voltage: r.voltageL1 ?? r.voltage,
@@ -59,10 +77,12 @@ export class TelemetryController {
             phase2PF: r.pfL2 ?? 0.99,
             phase3PF: r.pfL3 ?? 0.97,
 
-            thd: r.thdVL1 ?? 1.5,
             thdVL1: r.thdVL1 ?? 1.5,
             thdVL2: r.thdVL2 ?? 1.6,
             thdVL3: r.thdVL3 ?? 1.4,
+            thdIL1: r.thdIL1 ?? 1.1,
+            thdIL2: r.thdIL2 ?? 1.2,
+            thdIL3: r.thdIL3 ?? 1.0,
         }));
 
         // Raw history is DESC from DB, so reverse to ASC for timeline
@@ -71,6 +91,8 @@ export class TelemetryController {
     }
 
     @Get(':deviceId/latest')
+    @ApiOperation({ summary: 'Get the latest telemetry record for a device' })
+    @ApiResponse({ status: 200, description: 'The most recent telemetry data point' })
     async getLatest(@Param('deviceId') deviceId: string) {
         // Try to get from Redis "Hot Cache" first
         const cached = await this.telemetryService.getLatestFromRedis(deviceId);

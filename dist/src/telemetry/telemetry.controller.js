@@ -14,7 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TelemetryController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const telemetry_service_1 = require("./telemetry.service");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let TelemetryController = class TelemetryController {
     telemetryService;
     constructor(telemetryService) {
@@ -44,7 +46,16 @@ let TelemetryController = class TelemetryController {
             current: r.current,
             frequency: r.frequency || 50,
             energyKwh: r.energy,
+            energyConsumption: r.energyConsumption || 0,
             deviceId: r.deviceId || deviceId,
+            voltageMin: r.voltageMin ?? r.voltage,
+            voltageMax: r.voltageMax ?? r.voltage,
+            currentMin: r.currentMin ?? r.current,
+            currentMax: r.currentMax ?? r.current,
+            powerMin: r.powerMin ?? r.power,
+            powerMax: r.powerMax ?? r.power,
+            voltageUnbalance: r.voltageUnbalance ?? 0,
+            currentUnbalance: r.currentUnbalance ?? 0,
             phase1Voltage: r.voltageL1 ?? r.voltage,
             phase2Voltage: r.voltageL2 ?? (r.voltage ? r.voltage * 1.01 : null),
             phase3Voltage: r.voltageL3 ?? (r.voltage ? r.voltage * 0.99 : null),
@@ -59,10 +70,12 @@ let TelemetryController = class TelemetryController {
             phase1PF: r.pfL1 ?? 0.98,
             phase2PF: r.pfL2 ?? 0.99,
             phase3PF: r.pfL3 ?? 0.97,
-            thd: r.thdVL1 ?? 1.5,
             thdVL1: r.thdVL1 ?? 1.5,
             thdVL2: r.thdVL2 ?? 1.6,
             thdVL3: r.thdVL3 ?? 1.4,
+            thdIL1: r.thdIL1 ?? 1.1,
+            thdIL2: r.thdIL2 ?? 1.2,
+            thdIL3: r.thdIL3 ?? 1.0,
         }));
         return isAggregated ? mapped : mapped.reverse();
     }
@@ -111,6 +124,8 @@ let TelemetryController = class TelemetryController {
 exports.TelemetryController = TelemetryController;
 __decorate([
     (0, common_1.Get)(':deviceId/history'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get historical telemetry data for a device' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of telemetry records (raw or aggregated)' }),
     __param(0, (0, common_1.Param)('deviceId')),
     __param(1, (0, common_1.Query)('points')),
     __param(2, (0, common_1.Query)('startTime')),
@@ -121,12 +136,17 @@ __decorate([
 ], TelemetryController.prototype, "getHistory", null);
 __decorate([
     (0, common_1.Get)(':deviceId/latest'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get the latest telemetry record for a device' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'The most recent telemetry data point' }),
     __param(0, (0, common_1.Param)('deviceId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], TelemetryController.prototype, "getLatest", null);
 exports.TelemetryController = TelemetryController = __decorate([
+    (0, swagger_1.ApiTags)('Telemetry'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('telemetry'),
     __metadata("design:paramtypes", [telemetry_service_1.TelemetryService])
 ], TelemetryController);

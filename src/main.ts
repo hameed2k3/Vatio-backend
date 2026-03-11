@@ -1,12 +1,32 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { Logger } from 'nestjs-pino';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.enableCors(); // Enable CORS for everything in dev
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ logger: true })
+  );
+
+  app.enableCors();
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Swagger Documentation
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Vatio IoT API')
+    .setDescription('Professional API for Vatio Infrastructure')
+    .setVersion('2.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document);
 
   const mqttHost = process.env.MQTT_HOST || 'localhost';
   const mqttPort = process.env.MQTT_PORT || 1883;
@@ -21,9 +41,10 @@ async function bootstrap() {
   });
 
   await app.startAllMicroservices();
-  await app.listen(process.env.PORT || 3000, '0.0.0.0');
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`VATIO Backend is running on: ${await app.getUrl()}`);
-  console.log(`MQTT Ingestion connected to: mqtt://${mqttHost}:${mqttPort}`);
+  console.log(`🚀 VATIO Backend is running on: http://localhost:${port}`);
+  console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
 }
 bootstrap();

@@ -60,10 +60,25 @@ let TelemetryService = class TelemetryService {
         return this.prismaService.$queryRawUnsafe(`SELECT 
                 date_trunc('${bucket}', timestamp) as "timestamp",
                 AVG(voltage) as "voltage",
+                MIN("voltageMin") as "voltageMin",
+                MAX("voltageMax") as "voltageMax",
                 AVG(current) as "current",
+                MIN("currentMin") as "currentMin",
+                MAX("currentMax") as "currentMax",
                 AVG(power) as "power",
+                MIN("powerMin") as "powerMin",
+                MAX("powerMax") as "powerMax",
                 MAX(energy) as "energy",
-                AVG(frequency) as "frequency"
+                (MAX(energy) - MIN(energy)) as "energyConsumption",
+                AVG("voltageUnbalance") as "voltageUnbalance",
+                AVG("currentUnbalance") as "currentUnbalance",
+                AVG(frequency) as "frequency",
+                AVG("thdVL1") as "thdVL1",
+                AVG("thdVL2") as "thdVL2",
+                AVG("thdVL3") as "thdVL3",
+                AVG("thdIL1") as "thdIL1",
+                AVG("thdIL2") as "thdIL2",
+                AVG("thdIL3") as "thdIL3"
             FROM "Telemetry"
             WHERE "deviceId" = $1 
               AND "timestamp" >= $2 
