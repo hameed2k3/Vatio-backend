@@ -25,10 +25,10 @@ let IngestionController = class IngestionController {
         this.prismaService = prismaService;
     }
     async handleWifiTelemetry(data, context) {
-        await this.redisService.addToStream(data, context.getTopic());
+        await this.redisService.pushToQueue(data, context.getTopic());
     }
     async handle4GTelemetry(data, context) {
-        await this.redisService.addToStream(data, context.getTopic());
+        await this.redisService.pushToQueue(data, context.getTopic());
     }
     async handleTelemetry(data, context) {
         const topic = context.getTopic();

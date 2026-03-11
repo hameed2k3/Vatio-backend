@@ -25,8 +25,10 @@ let TelemetryController = class TelemetryController {
         const start = startTime ? new Date(startTime) : undefined;
         const end = endTime ? new Date(endTime) : undefined;
         let records;
+        let isAggregated = false;
         if (start && end && (!points || parseInt(points) > 1000)) {
             records = await this.telemetryService.getAggregatedHistory(deviceId, start, end);
+            isAggregated = true;
             console.log(`Aggregated History for ${deviceId}: ${records.length} buckets found`);
         }
         else {
@@ -35,30 +37,36 @@ let TelemetryController = class TelemetryController {
         }
         if (records.length > 0)
             console.log(`First record energy: ${records[0].energy}`);
-        return records.map(r => ({
+        const mapped = records.map(r => ({
             ts: new Date(r.timestamp).getTime(),
             power: r.power,
             voltage: r.voltage,
-            phase1Voltage: r.voltage,
-            phase2Voltage: r.voltage ? r.voltage * 1.01 : null,
-            phase3Voltage: r.voltage ? r.voltage * 0.99 : null,
-            totalVoltage: r.voltage,
-            phase1Current: r.current,
-            phase2Current: r.current ? r.current * 0.9 : null,
-            phase3Current: r.current ? r.current * 0.1 : null,
             current: r.current,
             frequency: r.frequency || 50,
-            powerFactor: 0.98,
-            phase1PF: 0.98,
-            phase2PF: 0.99,
-            phase3PF: 0.97,
-            thd: 1.5,
             energyKwh: r.energy,
             deviceId: r.deviceId || deviceId,
-        })).reverse();
+            phase1Voltage: r.voltageL1 ?? r.voltage,
+            phase2Voltage: r.voltageL2 ?? (r.voltage ? r.voltage * 1.01 : null),
+            phase3Voltage: r.voltageL3 ?? (r.voltage ? r.voltage * 0.99 : null),
+            totalVoltage: r.voltage,
+            phase1Current: r.currentL1 ?? r.current,
+            phase2Current: r.currentL2 ?? (r.current ? r.current * 0.9 : null),
+            phase3Current: r.currentL3 ?? (r.current ? r.current * 0.1 : null),
+            phase1Kw: r.kwL1 ?? (r.power ? r.power / 3000 : 0),
+            phase2Kw: r.kwL2 ?? (r.power ? r.power / 3000 : 0),
+            phase3Kw: r.kwL3 ?? (r.power ? r.power / 3000 : 0),
+            powerFactor: r.pfSystem ?? 0.98,
+            phase1PF: r.pfL1 ?? 0.98,
+            phase2PF: r.pfL2 ?? 0.99,
+            phase3PF: r.pfL3 ?? 0.97,
+            thd: r.thdVL1 ?? 1.5,
+            thdVL1: r.thdVL1 ?? 1.5,
+            thdVL2: r.thdVL2 ?? 1.6,
+            thdVL3: r.thdVL3 ?? 1.4,
+        }));
+        return isAggregated ? mapped : mapped.reverse();
     }
     async getLatest(deviceId) {
-<<<<<<< HEAD
         const cached = await this.telemetryService.getLatestFromRedis(deviceId);
         if (cached) {
             return {
@@ -98,20 +106,6 @@ let TelemetryController = class TelemetryController {
             energyKwh: latest.energy,
             deviceId: latest.deviceId || deviceId,
         };
-=======
-        const records = await this.telemetryService.getHistory(deviceId, 1);
-        if (records && records.length > 0) {
-            const r = records[0];
-            return {
-                ts: r.timestamp.getTime(),
-                power: r.power,
-                voltage: r.voltage,
-                current: r.current,
-                energy: r.energy,
-            };
-        }
-        return null;
->>>>>>> e4b2672 (feat: simulation implementation)
     }
 };
 exports.TelemetryController = TelemetryController;

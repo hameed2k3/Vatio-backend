@@ -53,40 +53,18 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
                 if (result) {
                     const [_, payloadString] = result;
                     const { data: rawData, topic } = JSON.parse(payloadString);
-                    const deviceId = topic ? topic.split('/').pop() : 'unknown';
+                    let deviceId = topic ? topic.split('/').pop() : 'unknown';
 
-<<<<<<< HEAD
-                            if (dataIndex !== -1 && topicIndex !== -1) {
-                                const payload = fields[dataIndex + 1];
-                                const topic = fields[topicIndex + 1];
-                                const deviceId = topic.split('/').pop();
+                    // Handle hardware topics
+                    if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
+                        deviceId = 'NEWDEV_01';
+                    }
 
-                                try {
-                                    const data = this.parseHardwareString(payload);
-                                    if (data) {
-                                        // Handle hardware topics: 'Meter_Reading' or 'test/Meter_Reading'
-                                        // If it doesn't contain a device ID in the topic, we assign it a default 'hw_01' 
-                                        // or look for it in the payload if you add it there later.
-                                        let deviceId = topic.split('/').pop();
-                                        if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
-                                            deviceId = 'NEWDEV_01'; // Default ID from your .ino script
-                                        }
-
-                                        data.deviceId = deviceId;
-                                        this.bufferData(data);
-                                    }
-                                } catch (e) {
-                                    this.logger.warn(`Failed to parse hardware payload: ${payload}`);
-                                }
-                            }
-                            await this.redisService.getClient().xack(this.streamName, this.groupName, id);
-=======
                     try {
                         const data = this.parseHardwareString(rawData);
                         if (data) {
                             data.deviceId = deviceId;
                             this.bufferData(data);
->>>>>>> e4b2672 (feat: simulation implementation)
                         }
                     } catch (e) {
                         this.logger.warn(`Failed to parse hardware payload: ${rawData}`);
@@ -100,15 +78,9 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     private parseHardwareString(payload: string): any {
-<<<<<<< HEAD
         // Format: "[0 : 1514.0759, 1 : 0.00, ...]" or [0 : 1514.0759, ...]
         this.logger.debug(`Raw Hardware Payload: ${payload}`);
 
-=======
-        // Format: [0 : val, 1 : val, ...]
-        const clean = payload.replace('[', '').replace(']', '');
-        const pairs = clean.split(',');
->>>>>>> e4b2672 (feat: simulation implementation)
         const dataMap: any = {};
         try {
             // Remove surrounding quotes if present, then brackets
@@ -134,33 +106,24 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
         const energy = dataMap['0'];
         this.logger.debug(`Energy at index 0: ${energy}`);
 
-<<<<<<< HEAD
-        return {
-            deviceId: 'unknown',
-            energy: isNaN(energy) ? 0 : energy,
-            voltage: dataMap['16'] || dataMap['10'] || 0,
-            current: dataMap['32'] || dataMap['26'] || 0,
-            power: dataMap['51'] || 0,
-            frequency: dataMap['44'] || 0,
-=======
         // Map ALL indices to object properties based on Vatio_WiFi_4G.ino
         return {
             deviceId: 'unknown',
             // Energy
-            energy: dataMap['0'] || 0,
+            energy: isNaN(energy) ? 0 : energy,
             // Per-phase Voltages
             voltageL1: dataMap['10'] || 0,
             voltageL2: dataMap['12'] || 0,
             voltageL3: dataMap['14'] || 0,
             voltageAvg: dataMap['16'] || 0,
             // Aggregate voltage (backward compat)
-            voltage: dataMap['10'] || 0,
+            voltage: dataMap['16'] || dataMap['10'] || 0,
             // Per-phase Currents
             currentL1: dataMap['26'] || 0,
             currentL2: dataMap['28'] || 0,
             currentL3: dataMap['30'] || 0,
             currentAvg: dataMap['32'] || 0,
-            current: dataMap['26'] || 0,
+            current: dataMap['32'] || dataMap['26'] || 0,
             // Per-phase Power Factor
             pfL1: dataMap['39'] || 0,
             pfL2: dataMap['40'] || 0,
@@ -181,7 +144,6 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
             thdVL1: dataMap['69'] || 0,
             thdVL2: dataMap['70'] || 0,
             thdVL3: dataMap['71'] || 0,
->>>>>>> e4b2672 (feat: simulation implementation)
             temp: 0,
         };
     }
@@ -295,6 +257,26 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
                 current: data.current,
                 power: data.power,
                 energy: data.energy,
+                frequency: data.frequency,
+                // Per-phase
+                voltageL1: data.voltageL1,
+                voltageL2: data.voltageL2,
+                voltageL3: data.voltageL3,
+                currentL1: data.currentL1,
+                currentL2: data.currentL2,
+                currentL3: data.currentL3,
+                pfL1: data.pfL1,
+                pfL2: data.pfL2,
+                pfL3: data.pfL3,
+                pfSystem: data.pfSystem,
+                kwL1: data.kwL1,
+                kwL2: data.kwL2,
+                kwL3: data.kwL3,
+                kva: data.kva,
+                kvar: data.kvar,
+                thdVL1: data.thdVL1,
+                thdVL2: data.thdVL2,
+                thdVL3: data.thdVL3,
                 temp: data.temp,
             },
         });
