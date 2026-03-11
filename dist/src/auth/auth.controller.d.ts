@@ -12,4 +12,16 @@ export declare class AuthController {
             role: string;
         };
     }>;
+    verifyOtp(body: any): Promise<{
+        access_token: string;
+        user: {
+            id: string;
+            email: string;
+            name: string | null;
+            role: string;
+        };
+    }>;
+    resendOtp(body: any): Promise<{
+        message: string;
+    }>;
 }

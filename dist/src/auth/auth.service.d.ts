@@ -16,4 +16,16 @@ export declare class AuthService implements OnModuleInit {
             role: string;
         };
     }>;
+    verifyOtp(email: string, otp: string): Promise<{
+        access_token: string;
+        user: {
+            id: string;
+            email: string;
+            name: string | null;
+            role: string;
+        };
+    }>;
+    resendOtp(email: string): Promise<{
+        message: string;
+    }>;
 }

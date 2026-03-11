@@ -8,7 +8,7 @@ export class AuthService implements OnModuleInit {
     constructor(
         private prisma: PrismaService,
         private jwtService: JwtService
-    ) {}
+    ) { }
 
     async onModuleInit() {
         const adminEmail = 'admin@vatio.io';
@@ -58,5 +58,36 @@ export class AuthService implements OnModuleInit {
                 role: user.role
             }
         };
+    }
+    async verifyOtp(email: string, otp: string) {
+        // Mock validation for development purposes
+        // In reality, you'd check Redis or the Database for an OTP generated for this email
+        if (otp !== '1234') {
+            throw new UnauthorizedException('Invalid OTP code');
+        }
+
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            // Because the frontend might send verify-otp right after a check, if the user doesn't exist
+            // we should maybe create them or throw an error. Let's assume they must exist.
+            throw new UnauthorizedException('User not found');
+        }
+
+        const payload = { sub: user.id, email: user.email, role: user.role };
+        return {
+            access_token: await this.jwtService.signAsync(payload),
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        };
+    }
+
+    async resendOtp(email: string) {
+        // Mock resend logic
+        console.log(`[Mock] Resending OTP to ${email}`);
+        return { message: 'OTP resent successfully' };
     }
 }

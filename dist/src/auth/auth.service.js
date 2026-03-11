@@ -101,6 +101,29 @@ let AuthService = class AuthService {
             }
         };
     }
+    async verifyOtp(email, otp) {
+        if (otp !== '1234') {
+            throw new common_1.UnauthorizedException('Invalid OTP code');
+        }
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found');
+        }
+        const payload = { sub: user.id, email: user.email, role: user.role };
+        return {
+            access_token: await this.jwtService.signAsync(payload),
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        };
+    }
+    async resendOtp(email) {
+        console.log(`[Mock] Resending OTP to ${email}`);
+        return { message: 'OTP resent successfully' };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
