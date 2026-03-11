@@ -12,12 +12,12 @@ export class IngestionController {
 
     @MessagePattern('Meter_Reading')
     async handleWifiTelemetry(@Payload() data: any, @Ctx() context: MqttContext) {
-        await this.redisService.addToStream(data, context.getTopic());
+        await this.redisService.pushToQueue(data, context.getTopic());
     }
 
     @MessagePattern('test/Meter_Reading')
     async handle4GTelemetry(@Payload() data: any, @Ctx() context: MqttContext) {
-        await this.redisService.addToStream(data, context.getTopic());
+        await this.redisService.pushToQueue(data, context.getTopic());
     }
 
     @MessagePattern('vatio/telemetry/#')

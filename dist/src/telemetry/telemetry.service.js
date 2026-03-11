@@ -37,22 +37,40 @@ let TelemetryService = class TelemetryService {
         });
     }
     async getAggregatedHistory(deviceId, startTime, endTime) {
-        return this.prismaService.$queryRaw `
-            SELECT 
-                date_trunc('minute', timestamp) as "timestamp",
+        const rangeMs = endTime.getTime() - startTime.getTime();
+        const rangeHours = rangeMs / (1000 * 60 * 60);
+        let bucket;
+        let limit;
+        if (rangeHours <= 2) {
+            bucket = 'minute';
+            limit = 500;
+        }
+        else if (rangeHours <= 48) {
+            bucket = 'hour';
+            limit = 200;
+        }
+        else if (rangeHours <= 24 * 60) {
+            bucket = 'day';
+            limit = 100;
+        }
+        else {
+            bucket = 'month';
+            limit = 50;
+        }
+        return this.prismaService.$queryRawUnsafe(`SELECT 
+                date_trunc('${bucket}', timestamp) as "timestamp",
                 AVG(voltage) as "voltage",
                 AVG(current) as "current",
                 AVG(power) as "power",
                 MAX(energy) as "energy",
                 AVG(frequency) as "frequency"
             FROM "Telemetry"
-            WHERE "deviceId" = ${deviceId} 
-              AND "timestamp" >= ${startTime} 
-              AND "timestamp" <= ${endTime}
-            GROUP BY "timestamp"
-            ORDER BY "timestamp" DESC
-            LIMIT 5000
-        `;
+            WHERE "deviceId" = $1 
+              AND "timestamp" >= $2 
+              AND "timestamp" <= $3
+            GROUP BY date_trunc('${bucket}', timestamp)
+            ORDER BY "timestamp" ASC
+            LIMIT ${limit}`, deviceId, startTime, endTime);
     }
     async getLatest(deviceId) {
         return this.prismaService.telemetry.findFirst({

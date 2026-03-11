@@ -27,22 +27,47 @@ export class TelemetryService {
     }
 
     async getAggregatedHistory(deviceId: string, startTime: Date, endTime: Date) {
-        return (this.prismaService as any).$queryRaw`
-            SELECT 
-                date_trunc('minute', timestamp) as "timestamp",
+        // Choose aggregation bucket based on range size
+        const rangeMs = endTime.getTime() - startTime.getTime();
+        const rangeHours = rangeMs / (1000 * 60 * 60);
+
+        let bucket: string;
+        let limit: number;
+        if (rangeHours <= 2) {
+            bucket = 'minute';    // 1h/2h → per-minute
+            limit = 500;
+        } else if (rangeHours <= 48) {
+            bucket = 'hour';      // 24h → per-hour (24 pts)
+            limit = 200;
+        } else if (rangeHours <= 24 * 60) {
+            bucket = 'day';       // 30 days → per-day (30 pts)
+            limit = 100;
+        } else {
+            bucket = 'month';     // 12 months → per-month (12 pts)
+            limit = 50;
+        }
+
+        // Using $queryRawUnsafe because date_trunc needs the bucket as a SQL keyword, 
+        // not a parameterized string value. Bucket is whitelist-validated above (safe).
+        return (this.prismaService as any).$queryRawUnsafe(
+            `SELECT 
+                date_trunc('${bucket}', timestamp) as "timestamp",
                 AVG(voltage) as "voltage",
                 AVG(current) as "current",
                 AVG(power) as "power",
                 MAX(energy) as "energy",
                 AVG(frequency) as "frequency"
             FROM "Telemetry"
-            WHERE "deviceId" = ${deviceId} 
-              AND "timestamp" >= ${startTime} 
-              AND "timestamp" <= ${endTime}
-            GROUP BY "timestamp"
-            ORDER BY "timestamp" DESC
-            LIMIT 5000
-        `;
+            WHERE "deviceId" = $1 
+              AND "timestamp" >= $2 
+              AND "timestamp" <= $3
+            GROUP BY date_trunc('${bucket}', timestamp)
+            ORDER BY "timestamp" ASC
+            LIMIT ${limit}`,
+            deviceId,
+            startTime,
+            endTime,
+        );
     }
 
     async getLatest(deviceId: string) {

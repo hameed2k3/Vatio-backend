@@ -2,37 +2,32 @@ import { TelemetryService } from './telemetry.service';
 export declare class TelemetryController {
     private readonly telemetryService;
     constructor(telemetryService: TelemetryService);
-<<<<<<< HEAD
     getHistory(deviceId: string, points?: string, startTime?: string, endTime?: string): Promise<{
         ts: number;
         power: any;
         voltage: any;
-        phase1Voltage: any;
-        phase2Voltage: number | null;
-        phase3Voltage: number | null;
-        totalVoltage: any;
-        phase1Current: any;
-        phase2Current: number | null;
-        phase3Current: number | null;
         current: any;
         frequency: any;
-        powerFactor: number;
-        phase1PF: number;
-        phase2PF: number;
-        phase3PF: number;
-        thd: number;
         energyKwh: any;
         deviceId: any;
+        phase1Voltage: any;
+        phase2Voltage: any;
+        phase3Voltage: any;
+        totalVoltage: any;
+        phase1Current: any;
+        phase2Current: any;
+        phase3Current: any;
+        phase1Kw: any;
+        phase2Kw: any;
+        phase3Kw: any;
+        powerFactor: any;
+        phase1PF: any;
+        phase2PF: any;
+        phase3PF: any;
+        thd: any;
+        thdVL1: any;
+        thdVL2: any;
+        thdVL3: any;
     }[]>;
     getLatest(deviceId: string): Promise<any>;
-=======
-    getHistory(deviceId: string, points?: string, startTime?: string, endTime?: string): Promise<any>;
-    getLatest(deviceId: string): Promise<{
-        ts: any;
-        power: any;
-        voltage: any;
-        current: any;
-        energy: any;
-    } | null>;
->>>>>>> e4b2672 (feat: simulation implementation)
 }

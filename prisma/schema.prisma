@@ -28,13 +28,43 @@ model Telemetry {
   deviceId  String
   timestamp DateTime @default(now())
   
-  // Electrical metrics
+  // Electrical metrics (Primary/Phase-1)
   voltage   Float?   // V
   current   Float?   // A
   power     Float?   // W
   energy    Float?   // kWh
   frequency Float?   // Hz
   
+  // Per-Phase Voltages
+  voltageL1 Float?
+  voltageL2 Float?
+  voltageL3 Float?
+  
+  // Per-Phase Currents
+  currentL1 Float?
+  currentL2 Float?
+  currentL3 Float?
+  
+  // Per-Phase Power Factor
+  pfL1      Float?
+  pfL2      Float?
+  pfL3      Float?
+  pfSystem  Float?
+  
+  // Per-Phase Power (kW)
+  kwL1      Float?
+  kwL2      Float?
+  kwL3      Float?
+  
+  // Apparent/Reactive
+  kva       Float?
+  kvar      Float?
+  
+  // THD
+  thdVL1    Float?
+  thdVL2    Float?
+  thdVL3    Float?
+
   // Environment/Status
   temp      Float?   // Celsius
   status    Int?     // Status code

@@ -56,45 +56,19 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                 continue;
             }
             try {
-<<<<<<< HEAD
-                const results = await this.redisService.getClient().xreadgroup('GROUP', this.groupName, this.consumerName, 'COUNT', 100, 'BLOCK', 1000, 'STREAMS', this.streamName, '>');
-                if (results) {
-                    for (const [_, messages] of results) {
-                        for (const [id, fields] of messages) {
-                            const dataIndex = fields.indexOf('data');
-                            const topicIndex = fields.indexOf('topic');
-                            if (dataIndex !== -1 && topicIndex !== -1) {
-                                const payload = fields[dataIndex + 1];
-                                const topic = fields[topicIndex + 1];
-                                const deviceId = topic.split('/').pop();
-                                try {
-                                    const data = this.parseHardwareString(payload);
-                                    if (data) {
-                                        let deviceId = topic.split('/').pop();
-                                        if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
-                                            deviceId = 'NEWDEV_01';
-                                        }
-                                        data.deviceId = deviceId;
-                                        this.bufferData(data);
-                                    }
-                                }
-                                catch (e) {
-                                    this.logger.warn(`Failed to parse hardware payload: ${payload}`);
-                                }
-                            }
-                            await this.redisService.getClient().xack(this.streamName, this.groupName, id);
-=======
                 const result = await this.redisService.getClient().blpop(this.streamName, 1);
                 if (result) {
                     const [_, payloadString] = result;
                     const { data: rawData, topic } = JSON.parse(payloadString);
-                    const deviceId = topic ? topic.split('/').pop() : 'unknown';
+                    let deviceId = topic ? topic.split('/').pop() : 'unknown';
+                    if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
+                        deviceId = 'NEWDEV_01';
+                    }
                     try {
                         const data = this.parseHardwareString(rawData);
                         if (data) {
                             data.deviceId = deviceId;
                             this.bufferData(data);
->>>>>>> e4b2672 (feat: simulation implementation)
                         }
                     }
                     catch (e) {
@@ -133,29 +107,22 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
         this.logger.debug(`Energy at index 0: ${energy}`);
         return {
             deviceId: 'unknown',
-<<<<<<< HEAD
             energy: isNaN(energy) ? 0 : energy,
-            voltage: dataMap['16'] || dataMap['10'] || 0,
-            current: dataMap['32'] || dataMap['26'] || 0,
-            power: dataMap['51'] || 0,
-=======
-            energy: dataMap['0'] || 0,
             voltageL1: dataMap['10'] || 0,
             voltageL2: dataMap['12'] || 0,
             voltageL3: dataMap['14'] || 0,
             voltageAvg: dataMap['16'] || 0,
-            voltage: dataMap['10'] || 0,
+            voltage: dataMap['16'] || dataMap['10'] || 0,
             currentL1: dataMap['26'] || 0,
             currentL2: dataMap['28'] || 0,
             currentL3: dataMap['30'] || 0,
             currentAvg: dataMap['32'] || 0,
-            current: dataMap['26'] || 0,
+            current: dataMap['32'] || dataMap['26'] || 0,
             pfL1: dataMap['39'] || 0,
             pfL2: dataMap['40'] || 0,
             pfL3: dataMap['41'] || 0,
             pfSystem: dataMap['42'] || 0,
             pfAvg: dataMap['43'] || 0,
->>>>>>> e4b2672 (feat: simulation implementation)
             frequency: dataMap['44'] || 0,
             kwL1: dataMap['45'] || 0,
             kwL2: dataMap['47'] || 0,
@@ -253,6 +220,25 @@ let AggregatorWorker = AggregatorWorker_1 = class AggregatorWorker {
                 current: data.current,
                 power: data.power,
                 energy: data.energy,
+                frequency: data.frequency,
+                voltageL1: data.voltageL1,
+                voltageL2: data.voltageL2,
+                voltageL3: data.voltageL3,
+                currentL1: data.currentL1,
+                currentL2: data.currentL2,
+                currentL3: data.currentL3,
+                pfL1: data.pfL1,
+                pfL2: data.pfL2,
+                pfL3: data.pfL3,
+                pfSystem: data.pfSystem,
+                kwL1: data.kwL1,
+                kwL2: data.kwL2,
+                kwL3: data.kwL3,
+                kva: data.kva,
+                kvar: data.kvar,
+                thdVL1: data.thdVL1,
+                thdVL2: data.thdVL2,
+                thdVL3: data.thdVL3,
                 temp: data.temp,
             },
         });

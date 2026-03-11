@@ -4,11 +4,7 @@ const axios = require('axios');
 const BROKER_URL = 'mqtt://localhost:1883';
 const BACKEND_URL = 'http://127.0.0.1:3000/ingestion/devices';
 const DISCOVERY_INTERVAL_MS = 10000;
-<<<<<<< HEAD
-const SIMULATION_INTERVAL_MS = 1000;
-=======
 const SIMULATION_INTERVAL_MS = 1000; // 1 second per tick (realistic meter read rate)
->>>>>>> e4b2672 (feat: simulation implementation)
 
 let clients = new Map();
 
@@ -277,7 +273,8 @@ function startSimulation(deviceId) {
         const totalKvar = Math.sqrt(Math.max(0, totalKva * totalKva - totalKw * totalKw));
 
         /* ── 8) Energy Accumulation ── */
-        const kwhIncrement = Math.abs(totalKw) * (dt / 3600);
+        // Accelerated accumulation (100x) for better visualization in short demos
+        const kwhIncrement = Math.abs(totalKw) * (dt / 3600) * 100;
         state.energyKwh += kwhIncrement;
 
         /* ── 9) Voltage THD (from THD screenshot: 1.5-3.5%) ── */
@@ -295,8 +292,8 @@ function startSimulation(deviceId) {
         const vln_avg = (state.vln[0] + state.vln[1] + state.vln[2]) / 3;
 
         let dataMap = {};
-        // Index  0: Import Energy (kWh) - cumulative, always increasing
-        dataMap[0] = state.energyKwh.toFixed(3);
+        // Index  0: Import Energy (kWh) - high precision to show small increments
+        dataMap[0] = state.energyKwh.toFixed(6);
         // Index  1-9: Other energy metrics (export, net, etc.) - low for simulation
         // These stay near 0 for a typical import-only installation
 
