@@ -35,8 +35,22 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const bcrypt = __importStar(require("bcrypt"));
+const dotenv = __importStar(require("dotenv"));
+const pg_1 = require("pg");
+const adapter_pg_1 = require("@prisma/adapter-pg");
+dotenv.config();
 async function main() {
-    const prisma = new client_1.PrismaClient();
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+        console.error('DATABASE_URL is not set');
+        process.exit(1);
+    }
+    const pool = new pg_1.Pool({
+        connectionString: url,
+        ssl: { rejectUnauthorized: false }
+    });
+    const adapter = new adapter_pg_1.PrismaPg(pool);
+    const prisma = new client_1.PrismaClient({ adapter });
     const email = 'admin@vatio.io';
     const password = 'password';
     try {

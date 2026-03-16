@@ -1,8 +1,24 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import * as dotenv from 'dotenv';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+
+dotenv.config();
 
 async function main() {
-  const prisma = new PrismaClient();
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error('DATABASE_URL is not set');
+    process.exit(1);
+  }
+
+  const pool = new Pool({
+    connectionString: url,
+    ssl: { rejectUnauthorized: false }
+  });
+  const adapter = new PrismaPg(pool);
+  const prisma = new PrismaClient({ adapter });
   const email = 'admin@vatio.io';
   const password = 'password';
   

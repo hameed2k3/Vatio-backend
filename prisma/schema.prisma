@@ -92,7 +92,9 @@ model Telemetry {
   powerMax         Float?
 
   // Extended Energy
-  netEnergy Float? // Import - Export
+  netEnergy      Float? // Import - Export
+  importEnergy   Float? // Total kWh drawn FROM grid
+  exportEnergy   Float? // Total kWh sent TO grid
 
   // Environment/Status
   temp      Float?   // Celsius

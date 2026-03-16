@@ -334,6 +334,8 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
                 voltageUnbalance: data.voltageUnbalance,
                 currentUnbalance: data.currentUnbalance,
                 netEnergy: data.netEnergy,
+                importEnergy: data.importEnergy,
+                exportEnergy: data.exportEnergy,
                 temp: data.temp,
             },
         });

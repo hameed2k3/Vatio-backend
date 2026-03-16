@@ -45,7 +45,8 @@ export class TelemetryController {
             current: r.current,
             frequency: r.frequency || 50,
             energyKwh: r.energy,
-            energyConsumption: r.energyConsumption || 0,
+            consumption: r.consumption || 0,
+            solar: r.solarYield || 0,
             deviceId: r.deviceId || deviceId,
 
             // Stats

@@ -9,7 +9,8 @@ export declare class TelemetryController {
         current: any;
         frequency: any;
         energyKwh: any;
-        energyConsumption: any;
+        consumption: any;
+        solar: any;
         deviceId: any;
         voltageMin: any;
         voltageMax: any;
