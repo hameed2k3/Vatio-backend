@@ -2,7 +2,6 @@ import { TelemetryService } from './telemetry.service';
 export declare class TelemetryController {
     private readonly telemetryService;
     constructor(telemetryService: TelemetryService);
-<<<<<<< HEAD
     getHistory(deviceId: string, points?: string, startTime?: string, endTime?: string): Promise<{
         ts: number;
         power: any;
@@ -25,14 +24,4 @@ export declare class TelemetryController {
         deviceId: any;
     }[]>;
     getLatest(deviceId: string): Promise<any>;
-=======
-    getHistory(deviceId: string, points?: string, startTime?: string, endTime?: string): Promise<any>;
-    getLatest(deviceId: string): Promise<{
-        ts: any;
-        power: any;
-        voltage: any;
-        current: any;
-        energy: any;
-    } | null>;
->>>>>>> e4b2672 (feat: simulation implementation)
 }

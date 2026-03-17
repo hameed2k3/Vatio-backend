@@ -52,41 +52,20 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
 
                 if (result) {
                     const [_, payloadString] = result;
+                    this.logger.debug(`Received from Redis: ${payloadString}`);
                     const { data: rawData, topic } = JSON.parse(payloadString);
                     const deviceId = topic ? topic.split('/').pop() : 'unknown';
 
-<<<<<<< HEAD
-                            if (dataIndex !== -1 && topicIndex !== -1) {
-                                const payload = fields[dataIndex + 1];
-                                const topic = fields[topicIndex + 1];
-                                const deviceId = topic.split('/').pop();
-
-                                try {
-                                    const data = this.parseHardwareString(payload);
-                                    if (data) {
-                                        // Handle hardware topics: 'Meter_Reading' or 'test/Meter_Reading'
-                                        // If it doesn't contain a device ID in the topic, we assign it a default 'hw_01' 
-                                        // or look for it in the payload if you add it there later.
-                                        let deviceId = topic.split('/').pop();
-                                        if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
-                                            deviceId = 'NEWDEV_01'; // Default ID from your .ino script
-                                        }
-
-                                        data.deviceId = deviceId;
-                                        this.bufferData(data);
-                                    }
-                                } catch (e) {
-                                    this.logger.warn(`Failed to parse hardware payload: ${payload}`);
-                                }
-                            }
-                            await this.redisService.getClient().xack(this.streamName, this.groupName, id);
-=======
                     try {
                         const data = this.parseHardwareString(rawData);
                         if (data) {
-                            data.deviceId = deviceId;
+                            // Hardware mapping based on Vatio_WiFi_4G.ino
+                            if (topic === 'Meter_Reading' || topic === 'test/Meter_Reading') {
+                                data.deviceId = 'NEWDEV_01';
+                            } else {
+                                data.deviceId = deviceId;
+                            }
                             this.bufferData(data);
->>>>>>> e4b2672 (feat: simulation implementation)
                         }
                     } catch (e) {
                         this.logger.warn(`Failed to parse hardware payload: ${rawData}`);
@@ -100,15 +79,9 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     private parseHardwareString(payload: string): any {
-<<<<<<< HEAD
-        // Format: "[0 : 1514.0759, 1 : 0.00, ...]" or [0 : 1514.0759, ...]
-        this.logger.debug(`Raw Hardware Payload: ${payload}`);
-
-=======
         // Format: [0 : val, 1 : val, ...]
-        const clean = payload.replace('[', '').replace(']', '');
-        const pairs = clean.split(',');
->>>>>>> e4b2672 (feat: simulation implementation)
+        const cleanPayload = payload.replace('[', '').replace(']', '');
+        const pairs = cleanPayload.split(',');
         const dataMap: any = {};
         try {
             // Remove surrounding quotes if present, then brackets
@@ -134,15 +107,6 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
         const energy = dataMap['0'];
         this.logger.debug(`Energy at index 0: ${energy}`);
 
-<<<<<<< HEAD
-        return {
-            deviceId: 'unknown',
-            energy: isNaN(energy) ? 0 : energy,
-            voltage: dataMap['16'] || dataMap['10'] || 0,
-            current: dataMap['32'] || dataMap['26'] || 0,
-            power: dataMap['51'] || 0,
-            frequency: dataMap['44'] || 0,
-=======
         // Map ALL indices to object properties based on Vatio_WiFi_4G.ino
         return {
             deviceId: 'unknown',
@@ -181,7 +145,6 @@ export class AggregatorWorker implements OnModuleInit, OnModuleDestroy {
             thdVL1: dataMap['69'] || 0,
             thdVL2: dataMap['70'] || 0,
             thdVL3: dataMap['71'] || 0,
->>>>>>> e4b2672 (feat: simulation implementation)
             temp: 0,
         };
     }
